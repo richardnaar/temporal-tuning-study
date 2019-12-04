@@ -528,28 +528,18 @@ for (subi in 1:length(unique(allDat$participant))) {
       zi = data$trials_2.intensity[tri]
       
       
-      if (zi <= 15) { 
-        data$delta[tri] <- '15'
-      # } else if (zi <= 15) {
-      #   data$delta[tri] <- '15'
-      # } else if (zi <= 20) {
-      #   data$delta[tri] <- '20'
-      } else if (zi <= 25) {
-        data$delta[tri] <- '25'
-      } else if (zi <= 30) {
-        data$delta[tri] <- '30'
-      } else if (zi <= 35) {
-        data$delta[tri] <- '35'
-      } else if (zi <= 40) {
-        data$delta[tri] <- '40'
-      # } else if (zi <= 45) {
-      #   data$delta[tri] <- '45'
-      } else if (zi <= 50) {
-        data$delta[tri] <- '50'
-      # } else if (zi <= 55) {
-      #   data$delta[tri] <- '55'
+      if (zi <= 10) { 
+        data$delta[tri] <- '5'  #'0-10'
+      } else if (zi <= 17) {
+        data$delta[tri] <- '15' # '8-23'
+      } else if (zi <= 23) {
+        data$delta[tri] <- '20' # '17-23'
+      } else if (zi <= 26) {
+        data$delta[tri] <- '24' # '23-26'
+      } else if (zi <= 29) {
+        data$delta[tri] <- '28' # '26-29'
       } else if (zi <= 60) {
-        data$delta[tri] <- '60'
+        data$delta[tri] <- '44' # '29-60'
       } else {
         data$delta[tri] <- 'NA'
         print(subi)
@@ -572,18 +562,30 @@ dataAll$delta <- as.factor(dataAll$delta)
 levels(dataAll$delta)
 #dataAll$quantile <- ordered(dataAll$quantile, levels = c("12.5", "25", "37.5", "50", "62.5", "75","87.5" ,"100"  ))
 #dataAll$delta <- ordered(dataAll$delta, levels = c("10", "20","30","40", "50", "60"  ))
-dataAll$delta <- ordered(dataAll$delta, levels = c("10", "15","20","25","30","35","40","45","50","55", "60"  ))
-dataAll$delta <- ordered(dataAll$delta, levels = c("15", "25","30","35","40","50","60"  ))
+#dataAll$delta <- ordered(dataAll$delta, levels = c("10", "15","20","25","30","35","40","45","50","55", "60"  ))
+#dataAll$delta <- ordered(dataAll$delta, levels = c("15", "25","30","35","40","50","60"  ))
+#dataAll$delta <- ordered(dataAll$delta, levels = c("1-17", "17-23","23-29","29-60"))
+# dataAll$delta <- ordered(dataAll$delta, levels = c("8", "20","26","44"))
+
 
 
 # meanContrast <- summarySE(dataAll, measurevar='trials_2.response', groupvars=c('delta', 'trials_2.label','participant'))
 
 require(plyr)
+
+
+meanContrast = ddply(dataAll, .( delta, trials_2.label, participant, trials_2.thisRepN, trials_2.intensity), summarize,
+                     NumPos = sum(trials_2.response),
+                     N      = length(trials_2.response))
+
 meanContrast = ddply(dataAll, .( delta, trials_2.label), summarize,
                NumPos = sum(trials_2.response),
                N      = length(trials_2.response))
 
-write.table(meanContrast, paste0(getwd(),"/meanContrast.txt"), sep="\t", dec = ",")
+
+meanContrast$trials_2.intensity <- as.numeric(meanContrast$trials_2.intensity )
+
+write.table(meanContrast, paste0(getwd(),"/contrastId.txt"), sep="\t", dec = ",") # meanContrast
 
 
 
