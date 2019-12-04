@@ -1258,55 +1258,69 @@ cd('C:\Users\Richard Naar\Documents\dok\ssvep\Visit to York\EEG data')
 psyList = dir([dataDir, '*.txt']);  %orderfields(implistSNR, date) 
 %load([dataDir, psyList(14).name]); % load data
 
-meanContrast = importfile(psyList(5).name, 2, 27);
-meanContrast.Properties.VariableNames = {'rowi' 'participant' 'contrast' 'trials_2label' 'NumPos' 'N'};
+% meanContrast = importfile(psyList(5).name, 2, 27);
+meanContrast = importMyFile(psyList(1).name); % 2 5981
+% meanContrast.Properties.VariableNames = {'rowi' 'participant' 'contrast' 'trials_2label' 'NumPos' 'N'};
+% meanContrast.Properties.VariableNames = {'rowi' 'contrast' 'trials_2label' 'NumPos' 'N'};
+
+
+meanContrast.Properties.VariableNames = {'rowi' 'contrast' 'trials_2label' 'participant' 'trials_2thisRepN' 'trials_2intensity' 'NumPos' 'N'};
 [C, IA, IC] = unique(meanContrast.trials_2label);
 % conds = {'Cued High' 'Cued Low' 'Non-Cued (high)' 'Non-Cued (low)'};
 conds = {meanContrast.trials_2label{IA(2)}, meanContrast.trials_2label{IA(1)}, ...
     meanContrast.trials_2label{IA(3)}, meanContrast.trials_2label{IA(4)}};
 %% now data for each subject
 
+pictureBase = 'C:\Users\Richard Naar\OneDrive - Tartu Ülikool\Tempral frequency manuscript\Muu\Pildid\individual';
+
 frex = [8,30,11];
 cols = {'r' 'g' 'b' 'k'};
 colsp = {'.r' '.g' '.b' '.k'};
 % 
-% for subi = 2:2%23;
+for subi = 1:23;
 % % subi = 1;
-figure()
+figure(subi)
 hold on
 for condi = 1:4;
 % condi = 3;
-frexi = 1;
+% frexi = 1;
 
 %% extract data
 %EEG
 %dataSnr(subi, condi) = allSnrE{subi,condi}(frex(frexi)); 
 % condi = 1;
 % psycoph
-condi = 1;
-subCondTable = meanContrast(strcmp(meanContrast.trials_2label, conds{condi}) , :); %& (meanContrast.participant == subi )
+% condi = 1;
+%  subCondTable = meanContrast(strcmp(meanContrast.trials_2label, conds{condi}) , :); %& (meanContrast.participant == subi )
+subCondTable = meanContrast(strcmp(meanContrast.trials_2label, conds{condi}) & (meanContrast.participant == subi ) , :); %
 
 OutOfNum = subCondTable.N;
-StimLevels = subCondTable.contrast/100;
+% StimLevels = subCondTable.contrast; % subCondTable.contrast/100;
+StimLevels = subCondTable.trials_2intensity; 
 NumPos = subCondTable.NumPos;
 
 %%
 %StimLevels = [.01 .03 .05 .07 .09 .11];
 %NumPos = [59 53 68 83 92 99];
 %OutOfNum = [100 100 100 100 100 100];
-PF = @PAL_Logistic;
+% PF = @PAL_Weibull; % help PAL_PFML_Fit
+PF = @PAL_Quick; 
+% PF = @PAL_CumulativeNormal;
+% PF = @PAL_Gumbel;
+% PF = @PAL_HyperbolicSecant;
 
 paramsFree = [1 1 0 0];
 
-searchGrid.alpha = [0.01:0.001:0.11];
-searchGrid.beta = logspace(0,3,101);
+searchGrid.alpha = [1:0.5:58]; % [0.01:0.001:0.11] [10:.5:60] [1:.05:51]; 
+searchGrid.beta = logspace(0,3,115); % logspace(0,3,101)
 searchGrid.gamma = 0.5;
-searchGrid.lambda = 0;
+searchGrid.lambda = 0;% 0.05;
 
 [paramsValues LL exitflag] = PAL_PFML_Fit(StimLevels, NumPos,...
     OutOfNum,searchGrid, paramsFree,PF)
 
-paramsValues
+thres(subi, condi) = paramsValues(1);
+exitFlags(subi, condi) = exitflag; 
 
 PropCorrectData = NumPos./OutOfNum;
 StimLevelsFine = [min(StimLevels):(max(StimLevels)- ...
@@ -1314,17 +1328,21 @@ min(StimLevels))./1000:max(StimLevels)];
 Fit = PF(paramsValues, StimLevelsFine);
 plot(StimLevelsFine,Fit,cols{condi},'linewidth',2);
 % hold on;
-plot(StimLevels, PropCorrectData, colsp{condi},'markersize',40);
+% plot(StimLevels, PropCorrectData, colsp{condi},'markersize',40);
 set(gca, 'fontsize',12);
-axis([.05 .6 .4 1]);
-pause
+% axis([.01 .5 .4 1]);
+axis([0 60 .4 1]);
+
+% pause
 %% 
 end
-legend({'Cued High';'Cued Low'; 'Non-Cued (high)'; 'Non-Cued (low)'})
 
+ylabel('Proportion of correct'); xlabel('Contrast')  
+legend({'Cued High';'Cued Low'; 'Non-Cued (high)'; 'Non-Cued (low)'}) %   24.9548   14.4735   27.6536   15.9465
+saveas(figure(subi),[pictureBase '\sub' num2str(subi)], 'jpg');
 
 hold off
-% end
+end
 
 %% PALAMEDES tutorial
 
@@ -1352,7 +1370,7 @@ paramsFree = [1 1 0 0];
 searchGrid.alpha = [0.01:0.001:0.11];
 searchGrid.beta = logspace(0,3,101);
 searchGrid.gamma = 0.5;
-searchGrid.lambda = 0.02;
+searchGrid.lambda = 0; % 0.02;
 
 [paramsValues LL exitflag] = PAL_PFML_Fit(StimLevels, NumPos,...
     OutOfNum,searchGrid, paramsFree,PF)
