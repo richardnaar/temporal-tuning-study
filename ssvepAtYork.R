@@ -180,36 +180,18 @@ dataAll$cued[dataAll$trials_2.cueText == 'slow'] <- 'Cued'
 dataAll$cued[dataAll$trials_2.cueText == '?'] <- 'Non-Cued'   
 
 dataAll$cued <- as.factor(dataAll$cued)
-  
-meanLast <- summarySE(dataAll, measurevar="trials_2.intensity.z", groupvars=c("cued", "trials_2.frex", "participant")) #
-
-#meanLast$trials_2.intensity.z <- as.numeric(meanLast$trials_2.intensity.z)
 
 
-#meanJasp1 <- subset(meanLast, cued == 'Cued')
-#meanJasp2 <- subset(meanLast, cued == 'Non-Cued')
-#meanJasp3 <- subset(meanLast, trials_2.frex == 'high')
-#meanJasp4 <- subset(meanLast, trials_2.frex  == 'low')
-
-
-#meanJasp1[4] <- NULL
-#names(meanJasp1[1:6])
-#names(meanJasp1)[6] <- "Cued"
-
-#names(meanJasp2)[6] <- "NonCued"
-#names(meanJasp3)[6] <- "High"
-#names(meanJasp4)[6] <- "Low"
-
-#juku <- cbind(meanJasp1, meanJasp2, meanJasp3, meanJasp4)
-#meanLastJasp <- cbind(data.frame(meanJasp1$participant, meanJasp1$Cued, meanJasp2$NonCued, meanJasp3$High, meanJasp4$Low))
-
-
-#write.table(meanLastJasp, paste0(getwd(),"/meanLast.txt"), sep="\t", dec = ",")
+Last <- subset(allDat, trials_2.thisN > 30)  
 
 library(ez)
 options(contrasts=c("contr.sum", "contr.poly"))
 
-meanLast
+require(Rmisc)
+
+meanLast <- summarySE(Last, measurevar="trials_2.intensity.z", groupvars=c("cued", "trials_2.frex", "participant")) #
+
+
 ezANOVA(data=meanLast, dv=.(trials_2.intensity.z), wid=.(participant), within=.(trials_2.frex, cued), detailed = TRUE, type=3)
 #ezANOVA(data=allDat, dv=.(trials_2.intensity.z), wid=.(participant), within=.(trials_2.label, label_2), detailed = TRUE, type=3)
 
@@ -219,14 +201,9 @@ meanLast$participant <- as.factor(meanLast$participant)
 
 #  allDat1 <- subset(allDat, label_2 == '51...65')
 
-meanLast <- summarySE(dataAll, measurevar="trials_2.intensity.z", groupvars=c("trials_2.label","participant")) #
+meanLast <- summarySE(Last, measurevar="trials_2.intensity.z", groupvars=c("trials_2.label","participant")) #
   
 with(meanLast, pairwise.t.test(trials_2.intensity.z, trials_2.label, p.adjust.method="BH", paired=T))
-# juku <- subset(allDat, label_2 == '51...65')
-
-
-#with(juku, pairwise.t.test(trials_2.intensity.z, trials_2.label, p.adjust.method="BH", paired=T))
-
 
 
 ## non-parametric tests
@@ -254,8 +231,12 @@ ggviolin(dataAll, x = 'trials_2.label', y = 'trials_2.intensity', fill = 'trials
                      tip.length = 0.03, paired = TRUE) # wilcox.test t.test Add significance levels
 
 ## ggpaired
-meanLast2 <- summarySE(dataAll, measurevar="trials_2.intensity.z", groupvars=c("cued", "trials_2.frex", "trials_2.label", "participant")) #
+meanLast2 <- summarySE(Last, measurevar="trials_2.intensity.z", groupvars=c("cued", "trials_2.frex", "trials_2.label", "participant")) #
 
+meanLast2$trials_2.frex <- as.factor(meanLast2$trials_2.frex)
+levels(meanLast2$trials_2.frex) 
+levels(meanLast2$trials_2.frex) <- c('High', 'Low')
+  
 ggpaired(meanLast2, x = 'cued', y = 'trials_2.intensity.z', 
          color = 'trials_2.label', line.color = "gray", line.size = 0.1,
          facet.by = "trials_2.frex",
@@ -263,7 +244,10 @@ ggpaired(meanLast2, x = 'cued', y = 'trials_2.intensity.z',
          ylab = 'Contrast thresholds (lower == higher acuity)',
          xlab = FALSE) +
          theme(legend.title = element_blank(),
-         axis.text.x = element_blank()) 
+         axis.text.x = element_blank(),
+         panel.border = element_blank(),
+         axis.ticks.y = element_line(size = 1),
+         axis.ticks.x = element_blank()) 
 #  stat_compare_means(paired = TRUE, method = 't.test') 
 
 #}  
@@ -353,7 +337,8 @@ imf <- c('F2-F1', 'F1+F2', '(2*F2)-(2*F1)','3*F1+F2', '(F1+F2)*2','3*F2 - F1')
 eegPath = "/Users/Richard Naar/Documents/dok/ssvep/Visit to York/EEG data"
 filesEEG <- list.files(path = eegPath, pattern = "*.csv", full.names = TRUE)
 
-eegDat <- read.csv(filesEEG[12], stringsAsFactors=FALSE)
+eegDat <- read.csv(filesEEG[15], stringsAsFactors=FALSE)
+filesEEG[15]
 
 #subDat <- data.frame()
 #eegDat.z <- data.frame()
@@ -371,19 +356,19 @@ require(Rmisc)
 require(ggplot2)
 require(psych)
 
-exclude = which(as.vector(unlist(tapply(eegDat$low8,eegDat$SubId, function(x) x %in% boxplot.stats(x)$out))))
+exclude = which(as.vector(unlist(tapply(eegDat$high30,eegDat$SubId, function(x) x %in% boxplot.stats(x)$out))))
 eegCleanDat <- subset(eegDat[-exclude,])
-
+eegCleanDat <- eegDat
 
 #names(eegCleanDat)
-meanEEG <- summarySE(eegDatCleanDat, measurevar="low8", groupvars=c("cond")) # fnirsData
+meanEEG <- summarySE(eegDat, measurevar="high15", groupvars=c("cond")) # eegDatCleanDat
 #describe(eegDat$low12) #describe(subset(rtm, cueInf == '50%')$reactionTime)
 
 # Kernel Density Plot
 # plot(density(subset(rtm, cueInf == '70%')$reactionTime), col='green')
 
 names(meanEEG)[3] <- 'yVal'
-meanEEG$yVal <- meanEEG$yVal - mean(meanEEG$yVal)
+#meanEEG$yVal <- meanEEG$yVal - mean(meanEEG$yVal)
 #meanF <- summarySE(mdata, measurevar="value", groupvars=c("cond"))
 
 
@@ -406,24 +391,46 @@ ggplot(meanEEG, aes(x=cond, y= yVal )) +
   xlab("") +
   theme(axis.text.x = element_text(size="12", angle = 0, hjust = 0))+
   ylab("") +
-  theme(axis.text.y = element_text(size="12", angle = 0, hjust = 0)) 
+  theme(axis.text.y = element_text(size="12", angle = 0, hjust = 0))
+  
 
 # eegDat$trial <- as.factor(eegDat$trial)
+
+eegCleanDat$cued[eegCleanDat$cond == "Cued high"] <- 'Cued'   
+eegCleanDat$cued[eegCleanDat$cond == "Cued low"] <- 'Cued'   
+eegCleanDat$cued[eegCleanDat$cond == "Non-cued high"] <- 'Non-Cued'   
+eegCleanDat$cued[eegCleanDat$cond == "Non-cued low"] <- 'Non-Cued'   
+
+eegCleanDat$frex[eegCleanDat$cond == "Cued high"] <- 'High'   
+eegCleanDat$frex[eegCleanDat$cond == "Cued low"] <- 'Low'   
+eegCleanDat$frex[eegCleanDat$cond == "Non-cued high"] <- 'High'   
+eegCleanDat$frex[eegCleanDat$cond == "Non-cued low"] <- 'Low'   
+
+
+eegCleanDat$cued <- as.factor(eegCleanDat$cued)
+eegCleanDat$frex <- as.factor(eegCleanDat$frex)
+
 
 # install.packages('ez')
 library(ez)
 options(contrasts=c("contr.sum", "contr.poly"))
 eegCleanDat$trial <- as.factor(eegCleanDat$trial)
-ezANOVA(data=eegDat, dv=.(low8), wid=.(SubId), within=.(cond), type=3) 
 
-ezANOVA(data=eegDat, dv=.(high30), wid=.(SubId), within=.(cond), type=3) 
+meanClean <- summarySE(eegCleanDat, measurevar="high15", groupvars=c("frex", "cued", "cond", "SubId")) # eegDatCleanDat
+#meanClean <- subset(meanClean, SubId != 3 & SubId != 22)
+ezANOVA(data=meanClean, dv=.(high15), wid=.(SubId), within=.(cued, frex), type=3) 
+#(data=eegCleanDat, dv=.(F11), wid=.(SubId), within=.(cued, frex), type=3) 
 
 
-with(eegCleanDat, pairwise.t.test(low16, cond, p.adjust.method="BH", paired=T))
+#ezANOVA(data=eegDat, dv=.(high30), wid=.(SubId), within=.(cond), type=3) 
+
+
+with(meanClean, pairwise.t.test(high30, cond, p.adjust.method="BH", paired=T))
+
 
 names(eegCleanDat)
 
-
+N <- summarySE(meanClean, measurevar="N", groupvars=c("cond"))
 
 }
 
@@ -491,7 +498,7 @@ for (subi in 1:length(unique(allDat$participant))) {
     
     data <- subset(subDat, trials_2.label == conds[condi])
     #data$localz <- scale(data$trials_2.intensity , center=TRUE, scale = TRUE)
-#    data <- subset(data, trials_2.thisRepN > 5)
+   data <- subset(data, trials_2.thisRepN > 5)
     
     ord = order(data$trials_2.intensity)
     data = data[ord, ]
@@ -538,8 +545,10 @@ for (subi in 1:length(unique(allDat$participant))) {
         data$delta[tri] <- '24' # '23-26'
       } else if (zi <= 29) {
         data$delta[tri] <- '28' # '26-29'
+      } else if (zi <= 45) {
+        data$delta[tri] <- '37' # '29-45'
       } else if (zi <= 60) {
-        data$delta[tri] <- '44' # '29-60'
+        data$delta[tri] <- '53' # '45-60'
       } else {
         data$delta[tri] <- 'NA'
         print(subi)
@@ -585,7 +594,8 @@ meanContrast = ddply(dataAll, .( delta, trials_2.label), summarize,
 
 meanContrast$trials_2.intensity <- as.numeric(meanContrast$trials_2.intensity )
 
-write.table(meanContrast, paste0(getwd(),"/contrastId.txt"), sep="\t", dec = ",") # meanContrast
+
+write.table(meanContrast, paste0(getwd(),"/contrastId3.txt"), sep="\t", dec = ",") # meanContrast
 
 
 
