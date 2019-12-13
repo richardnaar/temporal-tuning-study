@@ -1,4 +1,4 @@
-%%  EEG at York prelim (28.11.19)
+%%  EEG at York prelim (11.12.19)
 clc; close all; clear all; 
 
 %% 
@@ -137,15 +137,7 @@ fprintf(['saveing blink properties as:' implist(subi).name '-bProp.mat \n']);
 
 %eegplot(EEG.data, 'events', EEG.event)
 
-%% filter 
-lowcutoff = 1;
-revfilt = 0; % [0|1] reverse filter (i.e. bandpass filter to notch filter). {default 0}
-plotfreqz = 0;
-minphase = false; % defalut
-
-[EEG, com, b] = pop_eegfiltnew(EEG, 1, 40, [], revfilt, [], plotfreqz, minphase);
-% eegplot(EEG.data, 'events', EEG.event) % see the raw file
-
+%% (was moved to the next step)
 eogs = {'VEOG', 'HEOG'}; 
 
 eogi = find(ismember({EEG.chanlocs.labels}, eogs(2)));
@@ -189,7 +181,7 @@ fprintf(['Saveing the dataset as: ' implist(subi).name(1:end-4), '-clean.mat \n'
 
 
 end
-
+do.cleanData = 0;
 end
 
 % eegplot(EEG.data, 'events', EEG.event)
@@ -198,7 +190,7 @@ end
 %grandAverage = [];
 %p = struct();
 %% loop through all the datasets in implistM (pre-processed data) one by one
-manualCheck = 1; % check manually for artefacts
+manualCheck = 0; % check manually for artefacts
 for subi = 1:length(implistM) 
 % empty them after each iteration
 meanComplexFFT = [];
@@ -226,6 +218,16 @@ load([dataDirClean, implistM(subi).name]); % load data
 fprintf('loading participant: %s \n', implistM(subi).name);
 
 srate = EEG.srate;  % sampling frequency 
+EEG_raw = EEG;
+%% filter 
+lowcutoff = 1;
+revfilt = 0; % [0|1] reverse filter (i.e. bandpass filter to notch filter). {default 0}
+plotfreqz = 0;
+minphase = false; % defalut
+
+[EEG, com, b] = pop_eegfiltnew(EEG, 1, 40, [], revfilt, [], plotfreqz, minphase);
+% eegplot(EEG.data, 'events', EEG.event) % see the raw file
+
 %% extractin the blink structure
 % 
 blinkList = dir([dataDir 'blinks\', '*.mat']); 
@@ -237,7 +239,7 @@ for bFileCounter = 1:length(blinkList)
         bFileCounter = bFileCounter + 1;
     elseif strcmp( blinkList(bFileCounter).name(1:7) , implistM(subi).name(1:7) ) == 1
         load([dataDir 'blinks\' blinkList(bFileCounter).name])
-        fprintf('loading dataset: %s', blinkList(bFileCounter).name); fprintf('\n') % 
+%         fprintf('loading dataset: %s', blinkList(bFileCounter).name); fprintf('\n') % 
     else
         fprintf('Blinker file not found')
     end
@@ -245,7 +247,7 @@ end
 
 %% epoch parameters
 
-stimLocked = 1; % stim locked events allow to preserve data near the stim event
+stimLocked = 0; % stim locked events allow to preserve data near the stim event
 
 if stimLocked == 1
     event = {'STIM_HIGH' 'STIM_LOW' 'STIM_RND_H' 'STIM_RND_L'}; 
@@ -299,7 +301,7 @@ for thisEventIndx=1:nEvents % loop through all the events
         if eventCounter > fromTrial %
             if stimLocked == 1
                 eventOffset(currentIndex) = EEG.event(thisEventIndx).latency; % find event offset
-                eventOnset(currentIndex) = EEG.event(thisEventIndx-1).latency; % find previous event oncet (start if the epoch)
+                eventOnset(currentIndex) = EEG.event(thisEventIndx-1).latency; % find previous event oncet (start of the epoch)
             else
                 eventOnset(currentIndex) = EEG.event(thisEventIndx).latency; % find event oncet
                 eventOffset(currentIndex) = EEG.event(thisEventIndx+1).latency; % find next event oncet (end of the epoch)
@@ -313,7 +315,7 @@ fprintf('\nFound %d events \n',currentIndex-1);
 
 %% select channels
 
-electrodes = {'O1', 'Oz' 'O2', 'POz', 'P1', 'P2', 'PO5', 'PO3', 'PO4', 'PO6', 'HEOG'}; % HEOG will be removed latere (NB! hard coded)
+electrodes = {'O1', 'Oz', 'O2', 'POz', 'P1', 'P2', 'PO5', 'PO3', 'PO4', 'PO6', 'HEOG'}; % HEOG will be removed latere (NB! hard coded)
 
 p.electrodes = electrodes(1:end-1); % save to p
 
@@ -360,7 +362,8 @@ while (thisCueEvent <= currentIndex-2) % for thisCueEvent = 1:(currentIndex-1)
     
 %% prepare ress data matrix
     
-    allSamplesRess = EEG.data(1:end-1,startSample:endSample-1); % channels % not including the ocular channel (end-1) 
+    allSamplesRess = EEG_raw.data(1:end-1,startSample:endSample-1); % channels % not including the ocular channel (end-1) 
+    allSamplesRess = allSamplesRess - mean(mean(EEG_raw.data(:,startSample-srate/2:startSample),2)); % 
     rebinnedDataRess = reshape(allSamplesRess, size(allSamplesRess,1), EEG.srate,trialDur/EEG.srate);
 
 %     ressThisEvent = rebinnedDataRe; % not including the ocular channel (end-1) 
@@ -458,25 +461,13 @@ contrastPsychoTrials(thisCueEvent+fromTrial) = contrast;
 if ii == size(bIndx,2)
     
 a = ceil( blinkPeaks/srate);
-b = ceil( (blinkPeaks+dur) /srate);
-c = ceil( (blinkPeaks-dur) /srate) ;
+a(a == 0) = [];
+a(a > nrSegments) = [];
 
-a(a == 0) = []; b(b == 0) = []; c(c == 0) = [];
-a(a > nrSegments) = []; b(b > nrSegments) = []; c(c > nrSegments) = [];
-
-seg = zeros(nrSegments,3);
-     
-% if size(bIndx,2) == 1
-% seg = a+b+c; 
-% else    
+seg = zeros(nrSegments,1);     
 seg(a,1) = 1;
-seg(b,2) = 1;
-seg(c,3) = 1;
-     
-seg = sum(seg,2) ;
-% end
 
-notblinks = seg < 2;
+notblinks = seg < 1;
 
 end
 % txt = find(notblinks == 0)
@@ -528,7 +519,7 @@ end
 % grandAverage{eventIndx}=mean((meanComplexFFT),2); % Average across trials - the abs means we do NOT still keep coherent information
 grandAverage{subi, eventIndx} = mean(meanComplexFFT(:,find(trialId)),2); % Average across trials - the abs means we do NOT still keep coherent information
 if ~isempty(meanComplexFFT)   
-    allTheSingleTrials{subi, eventIndx} =  abs(meanComplexFFT(1:60,find(trialId)) ); % Here we lose coherence.
+    allTheSingleTrials{subi, eventIndx} =  abs(meanComplexFFT(1:60,find(trialId)) ).^2; % Here we lose coherence.
     p.allTheSingleTrialsStructure = {'participant', 'condition', 'frequency', 'trials'};
 end
 allBlinks{subi, eventIndx} = thisEventBlinks;
@@ -553,7 +544,7 @@ p.subject(subi).condition(eventIndx).data.psychophysics.contrast = {contrastPsyc
 
 %% SNR
 
-hz = abs(grandAverage{subi, eventIndx}(2:44));
+hz = abs(grandAverage{subi, eventIndx}(2:44)).^2;
 snrE = zeros(1,size(hz,1));
 skipbins =  1; % 1 Hz, hard-coded! (not skipping)
 numbins  = 2; %  2 Hz, also hard-coded!
@@ -581,7 +572,7 @@ p.subject(subi).condition(eventIndx).data.EEG.average.snr = snrE;
 end % next event
 p.subject(subi).psychoPyTable = behDat; 
 % pid = p.subject(subi);
-save([[dataDir 'individual\'] date p.subject(subi).Id '.mat'], 'pid', '-v7.3');
+% save([[dataDir 'individual\'] date p.subject(subi).Id '.mat'], 'pid', '-v7.3');
 
 end % next subject
 
@@ -615,7 +606,7 @@ for subi = 1:size(p.subject,2)
     end
 end
 
-save([dataDir date '-blinkStructure.mat'], 'bs', '-v7.3');
+save([dataDir date '-	.mat'], 'bs', '-v7.3');
 
 %% Rhythmic Entrainment Source Separation
 % only for lower frequency at the moment
@@ -646,13 +637,13 @@ srate = 500;
 nfft = ceil( srate/0.1 ); % .1 Hz resolution
 hzR    = linspace(0,srate,nfft);
 
-dNr = 12;
+dNr = 7;
 matList = dir([dataDir, '*.mat']); 
-load([dataDir matList(12).name])
+load([dataDir matList(dNr).name])
 
 fprintf('loading dataset: %s', matList(dNr).name); fprintf('\n') % loading dataset: 24-Nov-2019-TFUR-ress.mat
 
-ressAll = ressAllTrials;% ressAllSegments; 
+ressAll = ressAllTrials;%  ressAllSegments; %
 clear snrRESS
 for subi = 1:size(ressAll.subject,2) % subjects loop
 for ressi = 1:size(ressAll.subject(subi).condition,2) % condition loop
@@ -664,7 +655,7 @@ cellDat = {}; data = []; dati = 1;
 for ij = 1:size(data_raw,1)
     for uj = 1:size(data_raw{ij},3)
         cellDat(dati,1) = {data_raw{ij}(:,:,uj)};
-%        data(:,:, dati) = cellDat{dati,1};
+%         data(:,:, dati) = cellDat{dati,1};
         data = [data, cellDat{dati,1}];
 
         dati = dati + 1;
@@ -776,10 +767,10 @@ for subi = 1:23
     freso = 0.1;
     f2show = 40;
     f = 2;
-    meanRESS1 = meanRESS1 + snrRESS{subi,1,4}(1:(f2show/freso));
-    meanRESS2 = meanRESS2 + snrRESS{subi,2,4}(1:(f2show/freso)); 
-    meanRESS3 = meanRESS3 + snrRESS{subi,3,4}(1:(f2show/freso)); 
-    meanRESS4 = meanRESS4 + snrRESS{subi,4,4}(1:(f2show/freso)); 
+    meanRESS1 = meanRESS1 + snrRESS{subi,1,f}(1:(f2show/freso));
+    meanRESS2 = meanRESS2 + snrRESS{subi,2,f}(1:(f2show/freso)); 
+    meanRESS3 = meanRESS3 + snrRESS{subi,3,f}(1:(f2show/freso)); 
+    meanRESS4 = meanRESS4 + snrRESS{subi,4,f}(1:(f2show/freso)); 
 %     meanRESS5 = meanRESS5 + snrRESS{subi,1,2}(1:(f2show/freso)); 
     
 end
@@ -787,9 +778,9 @@ hz2plot = hzR(1:(f2show/freso));
 
 stem(hz2plot, meanRESS1/23, 'k')
 hold
-stem(hz2plot-.2, meanRESS2/23, 'r')
-stem(hz2plot+.2, meanRESS3/23, 'g')
-stem(hz2plot+.4, meanRESS4/23, 'b')
+stem(hz2plot, meanRESS2/23, 'r')
+stem(hz2plot, meanRESS3/23, 'g')
+stem(hz2plot, meanRESS4/23, 'b')
 %plot(hz2plot, meanRESS5/23, 'y')
 hold off
 % legend({'15';'30';'4'; '8'; '11'})
@@ -824,18 +815,18 @@ fprintf('loading dataset: %s', matList(dati).name); fprintf('\n')
 
 %allSnrE = snrRESS;
 
-iLow = [4:4:50];
-iHigh = [15:15:50];
-imf = [11, 19, 22, 27, 38, 41];
+iLow = [4:4:40];
+iHigh = [15:15:40];
+imf = [11, 19, 22, 27, 38];
 imfTxt = [{'F2 - F1'},{'F1 + F2'},{'(2*F2) - (2*F1)'},{'3*F1 + F2'},{'(F1 + F2)*2'}, {'3*F2 - F1'}];
 allFrex = [iLow, iHigh, imf];
 
 % FOIsLow = zeros(size(subtraction)); FOIsLow(iLow) = subtraction(iLow);
 
 header = [{'SubId', 'cond',...
-    'low4', 'low8', 'low12', 'low16', 'low20', 'low24','low28', 'low32', 'low36', 'low40', 'low44', 'low48',...
-    'high15', 'high30', 'high45',...
-    'F11', 'F19', 'F22','F27', 'F38','F41'}];
+    'low4', 'low8', 'low12', 'low16', 'low20', 'low24','low28', 'low32', 'low36', 'low40',...
+    'high15', 'high30', ...
+    'F11', 'F19', 'F22','F27', 'F38'}];
 data = {};
 data(1, :) = header;
 subDat = [];
@@ -847,12 +838,12 @@ for rind = 1:size(allSnrE,1)
   id = num2str(rind);
   
   if rind < 2
-      addVal1 = 1; addVal2 = 4;
+      top = 1; bottom = 4;
   else
-      addVal1 = addVal1+3 ; addVal2 = addVal2+3;
+      top = top+3 ; bottom = bottom+3;
   end
   
-  data(rind+addVal1:rind+addVal2, :) =  [{id}, {'Cued high'}, num2cell(high); {id}, {'Cued low'}, num2cell(low); {id},...
+  data(rind+top:rind+bottom, :) =  [{id}, {'Cued high'}, num2cell(high); {id}, {'Cued low'}, num2cell(low); {id},...
       {'Non-cued high'}, num2cell(high_rnd); {id}, {'Non-cued low'}, num2cell(low_rnd)];
    
 end
@@ -860,7 +851,7 @@ end
 addpath('C:\Users\Richard Naar\Documents\Matlab toolboxes\letswave6-master\external')
 
 cd(dataDir)
-cell2csv([date '-TFUR-SNRs-occipital-stim.csv'], data)
+cell2csv([date '-TFUR-SNRs-occipital-pred.csv'], data)
 
 do.saveCsv = 0;
 end
@@ -869,7 +860,7 @@ end
 
 while do.saveCsvRess == 1
 matList = dir([dataDir, '*.mat']); 
-dati = 2;
+dati = 9;
 load([dataDir matList(dati).name])
 
 fprintf('loading dataset: %s', matList(dati).name); fprintf('\n')
@@ -879,13 +870,14 @@ iHigh = [15:15:50];
 imf = [11, 19, 22, 27, 38, 41];
 imfTxt = [{'F2 - F1'},{'F1 + F2'},{'(2*F2) - (2*F1)'},{'3*F1 + F2'},{'(F1 + F2)*2'}, {'3*F2 - F1'}];
 allFrex = [iLow, iHigh, imf]/0.1;
+allFrex = [15, 30, 4, 8, 11]/0.1;
 snrDat = snrRESS;
 % FOIsLow = zeros(size(subtraction)); FOIsLow(iLow) = subtraction(iLow);
 
 header = [{'SubId', 'cond',...
-    'low4', 'low8', 'low12', 'low16', 'low20', 'low24','low28', 'low32', 'low36', 'low40', 'low44', 'low48',...
-    'high15', 'high30', 'high45',...
-    'F11', 'F19', 'F22','F27', 'F38','F41'}];
+         'low4', 'low8',...
+         'high15', 'high30',...
+         'F11'}];
 data = {};
 data(1, :) = header;
 subDat = [];
@@ -901,14 +893,10 @@ for frexi = 1:size(snrDat ,3)
   
 end
 
-if rind < 2
-    addVal1 = 1; addVal2 = 4;
-else
-    addVal1 = addVal1+3 ; addVal2 = addVal2+3;
-end
-  
 
-data(rind+addVal1:rind+addVal2, :) =  [{id}, {'Cued high'}, num2cell(high); {id}, {'Cued low'}, num2cell(low); {id},...
+top = size(data,1)+1; bottom = size(data,1)+4;
+
+data(top:bottom, :) =  [{id}, {'Cued high'}, num2cell(high); {id}, {'Cued low'}, num2cell(low); {id},...
       {'Non-cued high'}, num2cell(high_rnd); {id}, {'Non-cued low'}, num2cell(low_rnd)];
 
 
@@ -917,7 +905,7 @@ end
 addpath('C:\Users\Richard Naar\Documents\Matlab toolboxes\letswave6-master\external')
 
 cd(dataDir)
-cell2csv([date '-TFUR-SNRs-occipital-stim.csv'], data)
+cell2csv([date '-TFUR-SNRs-RESS-occipital-pred.csv'], data)
 
 do.saveCsvRess = 0;
 end
@@ -926,7 +914,7 @@ end
 
 while do.saveCsvSingle == 1
 matList = dir([dataDir, '*.mat']); 
-load([dataDir matList(2).name])
+load([dataDir matList(9).name])
 
 fprintf('loading dataset: %s', matList(1).name); fprintf('\n')
 
@@ -951,25 +939,66 @@ subDat = [];
 
 for rind = 1:size(allTheSingleTrials,1)
     
-  nTrials = size(allTheSingleTrials{rind,1},2);
+%% SNR
+nTrials = zeros(1,4);
+clear allTrialsSnrE
+for eventi = 1:4
+nTrials(eventi) = size(allTheSingleTrials{rind,eventi},2);        
+for triali = 1:nTrials(eventi)    
+hz = allTheSingleTrials{rind, eventi}(2:end, triali);
+snrE = zeros(1,size(hz,1));
+skipbins =  1; % 1 Hz, hard-coded! (not skipping)
+numbins  = 2; %  2 Hz, also hard-coded!
+
+% loop over frequencies and compute SNR
+for hzi=numbins+1:length(hz)-numbins-1
+    numer = hz(hzi);
+    denom = rms( hz([hzi-numbins:hzi-skipbins hzi+skipbins:hzi+numbins]) ); 
+    snrE(hzi) = numer./denom;
+end  
+%%
+% %     subplot(2,2,eventIndx); hold on
+% %     title(strrep(event{eventIndx}, '_',' '))
+
+%    bar(abs(grandAverage(2:60)));
+
+%     bar(abs(grandAverage{eventIndx}(2:60)));
+allTrialsSnrE{1,eventi}(:, triali) = snrE;
+end
+end
+%% 
     
-  high = allTheSingleTrials{rind,1}(allFrex,:); % PRED_HIGH
-  low =  allTheSingleTrials{rind,2}(allFrex,:); % PRED_LOW
-  high_rnd = allTheSingleTrials{rind,3}(allFrex,:); % PRED_RND_H
-  low_rnd = allTheSingleTrials{rind,4}(allFrex,:); % PRED_RND_L
+  high = allTrialsSnrE{1}(allFrex,:); % PRED_HIGH
+  low =  allTrialsSnrE{2}(allFrex,:); % PRED_LOW
+  high_rnd = allTrialsSnrE{3}(allFrex,:); % PRED_RND_H
+  low_rnd = allTrialsSnrE{4}(allFrex,:); % PRED_RND_L
+
+%   nTrials = size(allTheSingleTrials{rind,1},2);
+%     
+%   high = allTheSingleTrials{rind,1}(allFrex,:); % PRED_HIGH
+%   low =  allTheSingleTrials{rind,2}(allFrex,:); % PRED_LOW
+%   high_rnd = allTheSingleTrials{rind,3}(allFrex,:); % PRED_RND_H
+%   low_rnd = allTheSingleTrials{rind,4}(allFrex,:); % PRED_RND_L
   
 % for trial = 1:size(low_rnd,2)
   
   id = num2str(rind);
   
   if rind < 2
-      addVal1 = 1; addVal2 = 4*size(low_rnd,2);% 4;
+      top = 1; bottom = sum([size(high,2), size(low,2), size(high_rnd,2), size(low_rnd,2)]);
+      addVal = 1;
   else
-      addVal1 = (addVal1+size(low_rnd,2)*4)-1 ; addVal2 = (addVal2+size(low_rnd,2)*4)-1;
+      addVal = 0;
+      currentSub = sum([size(high,2), size(low,2), size(high_rnd,2), size(low_rnd,2)]);
+      top = size(data,1)+1 ; bottom = (top+currentSub)-1;
   end
   
-  data(rind+addVal1:rind+addVal2, :) =  [repmat([{1}, {'Cued high'}],nTrials ,1), num2cell(high)', num2cell(1:nTrials)'; repmat([{id}, {'Cued low'}],nTrials ,1), num2cell(low)', num2cell(1:nTrials)'; ...
-      repmat([{id}, {'Non-cued high'}],nTrials ,1), num2cell(high_rnd)', num2cell(1:nTrials)'; repmat([{id}, {'Non-cued low'}],nTrials ,1), num2cell(low_rnd)', num2cell(1:nTrials)'];
+%   data(rind+addVal1:rind+addVal2, :) =  [repmat([{1}, {'Cued high'}],nTrials(1) ,1), num2cell(high)', num2cell(1:nTrials(1))'];
+%     
+  
+  data(top+addVal:bottom+addVal, :) =  [repmat([{id}, {'Cued high'}],nTrials(1) ,1), num2cell(high)', num2cell(1:nTrials(1))'; repmat([{id}, {'Cued low'}],nTrials(2) ,1), num2cell(low)', num2cell(1:nTrials(2))'; ...
+      repmat([{id}, {'Non-cued high'}],nTrials(3) ,1), num2cell(high_rnd)', num2cell(1:nTrials(3))'; repmat([{id}, {'Non-cued low'}],nTrials(4) ,1), num2cell(low_rnd)', num2cell(1:nTrials(4))'];
+
   
 % end
 end
@@ -977,7 +1006,7 @@ end
 addpath('C:\Users\Richard Naar\Documents\Matlab toolboxes\letswave6-master\external')
 
 cd(dataDir)
-cell2csv([date '-TFUR-AllTheSingleTrials-apl-STIM.csv'], data)
+cell2csv([date '-TFUR-SingleTrials-SNR-PRED.csv'], data)
 
 do.saveCsvSingle = 0;
 end
@@ -1003,9 +1032,9 @@ implistSNR = dir([dataDir, '*.mat']);  %orderfields(implistSNR, date)
 % [x,idx] = sort(datenum([{implistSNR.date}]), 'descend');
 % implistSNR = implistSNR(idx);
 
-load([dataDir, implistSNR(8).name]); % load data
+load([dataDir, implistSNR(1).name]); % load data
 
-fprintf('loading participant: %s \n', implistSNR(8).name);
+fprintf('loading participant: %s \n', implistSNR(1).name);
 
 for frex = 1:2
 comp1 = frex;  
@@ -1052,7 +1081,7 @@ FOIsHigh = zeros(size(subtraction_lrnd)); FOIsHigh(foiHigh) = subtraction_lrnd(f
 bar(FOIsHigh, 'k')
 title('certain - uncertain condition')
 legend({'Other';'Low';'High'})
-set(gca,'ylim',[-4 4], 'FontSize',12)
+set(gca,'ylim',[-35 35], 'FontSize',12)
 
 %% random high
 subplot(3,1,3);
@@ -1258,8 +1287,8 @@ cd('C:\Users\Richard Naar\Documents\dok\ssvep\Visit to York\EEG data')
 psyList = dir([dataDir, '*.txt']);  %orderfields(implistSNR, date) 
 %load([dataDir, psyList(14).name]); % load data
 
-% meanContrast = importfile(psyList(5).name, 2, 27);
-meanContrast = importMyFile(psyList(1).name); % 2 5981
+% meanContrast = importfile(psyList(5).name, 2, 26);
+meanContrast = importMyFile(psyList(3).name); % 2 5981
 % meanContrast.Properties.VariableNames = {'rowi' 'participant' 'contrast' 'trials_2label' 'NumPos' 'N'};
 % meanContrast.Properties.VariableNames = {'rowi' 'contrast' 'trials_2label' 'NumPos' 'N'};
 
@@ -1277,10 +1306,11 @@ frex = [8,30,11];
 cols = {'r' 'g' 'b' 'k'};
 colsp = {'.r' '.g' '.b' '.k'};
 % 
-for subi = 1:23;
-% % subi = 1;
+% for subi = 1:23;
+subi = 1;
 figure(subi)
 hold on
+% for plotting = 1:2
 for condi = 1:4;
 % condi = 3;
 % frexi = 1;
@@ -1291,30 +1321,30 @@ for condi = 1:4;
 % condi = 1;
 % psycoph
 % condi = 1;
-%  subCondTable = meanContrast(strcmp(meanContrast.trials_2label, conds{condi}) , :); %& (meanContrast.participant == subi )
-subCondTable = meanContrast(strcmp(meanContrast.trials_2label, conds{condi}) & (meanContrast.participant == subi ) , :); %
+ subCondTable = meanContrast(strcmp(meanContrast.trials_2label, conds{condi}) , :); %& (meanContrast.participant == subi )
+% subCondTable = meanContrast(strcmp(meanContrast.trials_2label, conds{condi}) & (meanContrast.participant == subi ) , :); %
 
-OutOfNum = subCondTable.N;
-% StimLevels = subCondTable.contrast; % subCondTable.contrast/100;
-StimLevels = subCondTable.trials_2intensity; 
-NumPos = subCondTable.NumPos;
+OutOfNum = subCondTable.N';
+% StimLevels = subCondTable.contrast'; % subCondTable.contrast/100;
+StimLevels = subCondTable.trials_2intensity'; 
+NumPos = subCondTable.NumPos';
 
 %%
 %StimLevels = [.01 .03 .05 .07 .09 .11];
 %NumPos = [59 53 68 83 92 99];
 %OutOfNum = [100 100 100 100 100 100];
-% PF = @PAL_Weibull; % help PAL_PFML_Fit
-PF = @PAL_Quick; 
+% PF = @PAL_Weibull; % lin
+PF = @PAL_Quick; % lin
 % PF = @PAL_CumulativeNormal;
 % PF = @PAL_Gumbel;
 % PF = @PAL_HyperbolicSecant;
 
 paramsFree = [1 1 0 0];
 
-searchGrid.alpha = [1:0.5:58]; % [0.01:0.001:0.11] [10:.5:60] [1:.05:51]; 
-searchGrid.beta = logspace(0,3,115); % logspace(0,3,101)
-searchGrid.gamma = 0.5;
-searchGrid.lambda = 0;% 0.05;
+searchGrid.alpha = [1:0.5:60]; % [0.01:0.001:0.11] [10:.5:60] [1:.05:51]; 
+searchGrid.beta = logspace(0,3,119); % logspace(0,3,101)
+searchGrid.gamma = .5;
+searchGrid.lambda = .02;% 
 
 [paramsValues LL exitflag] = PAL_PFML_Fit(StimLevels, NumPos,...
     OutOfNum,searchGrid, paramsFree,PF)
@@ -1328,22 +1358,53 @@ min(StimLevels))./1000:max(StimLevels)];
 Fit = PF(paramsValues, StimLevelsFine);
 plot(StimLevelsFine,Fit,cols{condi},'linewidth',2);
 % hold on;
-% plot(StimLevels, PropCorrectData, colsp{condi},'markersize',40);
+if plotting > 1
+%     plot(StimLevels, PropCorrectData, colsp{condi},'markersize',40);
+end
 set(gca, 'fontsize',12);
 % axis([.01 .5 .4 1]);
 axis([0 60 .4 1]);
 
+
+% Estimating the standard errors
+B = 400;
+
+
+[SD paramsSim LLSim converged] = PAL_PFML_BootstrapParametric(StimLevels, OutOfNum, paramsValues, ...
+paramsFree, B, PF, 'searchGrid', searchGrid);
+
+
+% paramsFree = [1 1 0 1];
+% [SD paramsSim LLSim converged] = PAL_PFML_BootstrapNonParametric(StimLevels, NumPos, OutOfNum, ...
+% [],paramsFree, B, PF, 'lapseLimits',[0 .03], 'searchGrid', searchGrid);
+
+SDs(condi, :) = SD;
+
+%% goodness of fit
+% % 
+% % B = 1000;
+% % [Dev pDev DevSim converged] = PAL_PFML_GoodnessOfFit(StimLevels,...
+% % NumPos, OutOfNum, paramsValues, paramsFree, B, PF, 'searchGrid',...
+% % searchGrid);
+% % 
+% % pDevs(condi) = pDev;
 % pause
+
 %% 
 end
 
 ylabel('Proportion of correct'); xlabel('Contrast')  
-legend({'Cued High';'Cued Low'; 'Non-Cued (high)'; 'Non-Cued (low)'}) %   24.9548   14.4735   27.6536   15.9465
-saveas(figure(subi),[pictureBase '\sub' num2str(subi)], 'jpg');
-
-hold off
+% legend({'Cued High'; ''; 'Cued Low'; ''; 'Non-Cued (high)';'';  'Non-Cued (low)'; ''}) %   24.9548   14.4735   27.6536   15.9465 (26.7926   13.7415   31.4971   16.3844)
+if plotting < 2
+legend({'Cued High'; 'Cued Low'; 'Non-Cued (high)'; 'Non-Cued (low)'}) %   24.9548   14.4735   27.6536   15.9465 (26.7926   13.7415   31.4971   16.3844)
 end
+% saveas(figure(subi),[pictureBase '\sub' num2str(subi)], 'jpg');
 
+% end
+hold off
+% end
+% 22.8946   12.5468   27.3640   15.4593
+% 0.3170    0.0290    0.7680    0.3490
 %% PALAMEDES tutorial
 
 addpath('C:\Users\Richard Naar\Documents\MATLAB\palamedes1_10_3\Palamedes')
@@ -1360,8 +1421,8 @@ FirstDerivs = PAL_Logistic([0 1 0.5 0.01],[-1 0 1 2],'derivative');
 
 % Maximum likelihood criterion
 
-StimLevels = [.01 .03 .05 .07 .09 .11];
-NumPos = [59 53 68 83 92 99];
+StimLevels = [.01 .03 .05 .07 .09 .11]; 
+NumPos = [59 53 68 83 92 99]; 
 OutOfNum = [100 100 100 100 100 100];
 PF = @PAL_Logistic;
 
