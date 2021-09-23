@@ -1,11 +1,11 @@
-%%  EEG at York prelim (15.09.21) %% NB! Do STIM OFF
+%%  EEG at York prelim (01.09.21)
 clc; close all; clear all; 
 
 %% 
-do = struct('other',                 0, 'plotting',             0,...
-            'montage',               1, 'singleElectrodes',     0,...    
-            'cleanData',             0, 'saveCsv',              0,...
-            'saveCsv2',              0, 'saveCsvSingle',        1);
+do = struct('other',              0, 'plotting',     0,...
+            'gedvecs',            0, 'saveCsv',      0,...
+            'saveCsvSingle',      0, 'cleanData',    1,...
+            'ress',               0);
 
 %% Paths
 
@@ -31,7 +31,7 @@ escapeKey = KbName('ESCAPE');
 KbCheck;
 %% clean, find triggers, down-sample, find blinks and save
 
-while do.cleanData
+while do.cleanData == 1
 %% open the eeglab for a sec to get the paths as needed (only for pop_blinker)
 eeglab; close
 %%
@@ -184,481 +184,35 @@ end
 do.cleanData = 0;
 end
 
-while do.montage
 % eegplot(EEG.data, 'events', EEG.event)
-%% epoch and save single trial and grand average SNR and amplitude data, large data structure (p) and ress
+%% epoch and save single trial and grand average SNR data
 
-doRess = 1;
-do_p_struct = 0;
-doSingleTrial = 1;
-plotPlinks = 0;
-findBlinks = 0;
-stimLocked = 0; % stim locked events allow to preserve data near the stim event
+%grandAverage = [];
+%p = struct();
+%%
 
-if do_p_struct; doRess = 1; doSingleTrial = 1; doAvgAmp = 1; doAvgSNR = 1; end
 %% some electrode sets
 
-%left_frontal = {'Fp1', 'AF3', 'AF7', 'F1', 'F3', 'F5', 'F7'};
-% right_frontal = {'Fp2', 'AF4', 'AF8', 'F2', 'F4', 'F6', 'F8'}; 
-% left_fronto_central = {'FC1', 'FC3', 'FC5', 'C1', 'C3', 'C5', 'CP1', 'CP3', 'CP5'};
-% right_fronto_central = {'FC2', 'FC4', 'FC6', 'C2', 'C4', 'C6', 'CP2', 'CP4', 'CP6'}; 
-% left_temporal = {'FT7', 'T7', 'TP7', 'TP9'};
-%right_temporal = {'FT8', 'T8', 'TP8', 'TP10'};
-% left_parieto_occipital = {'P1', 'P3', 'P5', 'P7', 'PO3', 'PO7', 'O1'};
-% left_parieto_occipital = {'P2', 'P4', 'P6', 'P8', 'PO4', 'PO8', 'O2'};
-% fronto_central = {'Fpz', 'Fz'};
-% central = {'FCz', 'Cz', 'CPz'}; 
-occipito_central = {'Pz', 'POz', 'Oz', 'O1', 'O2'}; 
-% occipito_central2 = {'Pz', 'POz', 'Oz', 'O1', 'O2'}; 
-% right_fronto_temporal = {'FT8', 'T8', 'TP8', 'TP10'}; 
+left_frontal = {'Fp1', 'AF3', 'AF7', 'F1', 'F3', 'F5', 'F7'};
+right_frontal = {'Fp2', 'AF4', 'AF8', 'F2', 'F4', 'F6', 'F8'}; 
+left_fronto_central = {'FC1', 'FC3', 'FC5', 'C1', 'C3', 'C5', 'CP1', 'CP3', 'CP5'};
+right_fronto_central = {'FC2', 'FC4', 'FC6', 'C2', 'C4', 'C6', 'CP2', 'CP4', 'CP6'}; 
+left_temporal = {'FT7', 'T7', 'TP7', 'TP9'};
+right_temporal = {'FT8', 'T8', 'TP8', 'TP10'};
+left_parieto_occipital = {'P1', 'P3', 'P5', 'P7', 'PO3', 'PO7', 'O1'};
+fronto_central = {'Fpz', 'Fz'};
+central = {'FCz', 'Cz', 'CPz'}; 
+occipito_central = {'Pz', 'POz', 'Oz'}; 
+right_fronto_temporal = {'FT8', 'T8', 'TP8', 'TP10'}; 
 
-current_set = occipito_central;
-
-%% loop through all the datasets in implistM (pre-processed data) one by one
-manualCheck = 0; % check manually for artefacts
-for subi = 1:length(implistM) 
-% empty them after each iteration
-meanComplexFFT = [];
-thisEventBlinks = {};
-    
-%% load psychophysics data (this takes currently an assumption that the EEG failes are in the same order as csv files)
-
-files = dir([behDir , '*.csv']);
-filename = fullfile(behDir,files(subi).name); % find the corresponding file
-
-behDat = readtable(filename,...
-    'Delimiter',',','ReadVariableNames',false); % load the data
-
-names = table2array(behDat(1,4:41)); % take the variable names from the first row
-names = strrep(names, '.',''); names = strrep(names, '_',''); names = strrep(names, ' ','');
-
-behDat = behDat(3:end,4:41);
-behDat.Properties.VariableNames = names; % rename the variables
-behDatConds = {'high', 'low', 'high50', 'low50'};
-%% load EEG
-EEG = []; 
-
-load([dataDirClean, implistM(subi).name]); % load data
-
-fprintf('loading participant: %s \n', implistM(subi).name);
-
-srate = EEG.srate;  % sampling frequency 
-EEG_raw = EEG;
-%% filter 
-lowcutoff = 1;
-revfilt = 0; % [0|1] reverse filter (i.e. bandpass filter to notch filter). {default 0}
-plotfreqz = 0;
-minphase = false; % defalut
-
-[EEG, com, b] = pop_eegfiltnew(EEG, 1, 125, [], revfilt, [], plotfreqz, minphase);
-% eegplot(EEG.data, 'events', EEG.event) % see the raw file
-
-%% extracting the blink structure
-if findBlinks
-    blinkList = dir([dataDir 'blinks\', '*.mat']); 
-    % load([dataDir 'blinks\' blinkList(end).name])
-    % fprintf('loading dataset: %s', blinkList(end).name); fprintf('\n') 
-
-    bFileCounter = 0; fileNotFound = 1;
-    while fileNotFound
-    bFileCounter = bFileCounter + 1;
-        if strcmp( blinkList( bFileCounter ).name(1:7) , implistM(subi).name(1:7) ) ~= 1 && bFileCounter <= length(blinkList)
-            % do nothing
-        elseif strcmp( blinkList(bFileCounter).name(1:7) , implistM(subi).name(1:7) ) == 1
-            load([dataDir 'blinks\' blinkList(bFileCounter).name])
-            fprintf('loading dataset: %s', blinkList(bFileCounter).name); fprintf('\n') 
-            fileNotFound = 0;
-        else
-            fprintf('Blinker file not found')
-        end
-    end
-end
-%% epoch parameters
-
-
-if stimLocked == 1
-    event = {'STIM_HIGH' 'STIM_LOW' 'STIM_RND_H' 'STIM_RND_L'}; 
-else
-    event = {'PRED_HIGH' 'PRED_LOW' 'PRED_RND_H' 'PRED_RND_L'};
-end
-
-% other events
-% event = {{'STIM_HIGH', 'STIM_LOW'}, {'STIM_RND_L', 'STIM_RND_H'}}; 
-% event = {'PRED_HIGH' 'PRED_LOW' 'PRED_RND_H' 'PRED_RND_L'}; 
-% event = {'CUE_HIGH' 'CUE_LOW' 'CUE_RND_H' 'CUE_RND_L'};
-% event = {'ITI'};
-
-% this is the transient response that will be subtracted from the epoched data
-% note that in majority of cases it leads to noninteger durations
-transient = 0.5; % this is in seconds
-
-% subtract transient from 10 delay periods used in the study (in seconds)
-% and multiply it by the sampling rate
-if stimLocked == 1
-    eventDurs = ([1.5, 2, 2.5, 3]-transient ) * srate;
-else
-    eventDurs = ( [ 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8 ]-transient ) * srate;
-end
-
-% find maximum duration in samples that will be divisible by sampling rate
-% (this is needed for coherence averaging)
-eventDurs = eventDurs - mod(eventDurs, srate);
-
-% number of trials to skip in each event category
-fromTrial = 0; 
-
-%% save same data for the p structure
-if do_p_struct
-    p.subject(subi).conditionLabels  = event;
-    % p.conditionLabels = event;
-    p.transient = transient;
-    p.fromTrial = fromTrial;
-    p.subject(subi).psychoLabels = behDatConds; 
-    p.subject(subi).Id = implistM(subi).name;
-end
-%%
-for eventIndx = 1:length(event) % loop through the event categories
-
-% Find all the events corresponding to the eventIndex
-thisEvent = event{eventIndx}; % pick events from predefined event categories
-nEvents=length(EEG.event); % get the number of all the events in the dataset
-currentIndex=1; % set the eventindex to be one before entering the loop 
-% (this will be increased by one each time we find the predefined event from 
-% the eventlist, after exclusion of the number of trials set in freomTrial)
-eventCounter = 0; % set the counter to exclude first fwe trials
-
-for thisEventIndx=1:nEvents % loop through all the events
-    if  strfind(EEG.event(thisEventIndx).type, char(thisEvent)) % any(ismember(thisEvent, EEG.event(thisEventIndx).type)) % to compare cued to non-cued
-        eventCounter = eventCounter + 1;
-        if eventCounter > fromTrial %
-            if stimLocked == 1
-                eventOffset(currentIndex) = EEG.event(thisEventIndx).latency; % find event offset
-                eventOnset(currentIndex) = EEG.event(thisEventIndx-1).latency; % find previous event oncet (start of the epoch)
-            else
-                eventOnset(currentIndex) = EEG.event(thisEventIndx).latency; % find event oncet
-                eventOffset(currentIndex) = EEG.event(thisEventIndx+1).latency; % find next event oncet (end of the epoch)
-            end
-            currentIndex=currentIndex+1;
-        end
-    end
-end
- 
-fprintf('\nFound %d events \n',currentIndex-1);
-%% select channels
-% electrodes = {'O1', 'Oz', 'O2', 'HEOG'}; % HEOG will be removed latere (NB! hard coded) 'POz', 'P1', 'P2', 'PO5', 'PO3', 'PO4', 'PO6',
-
-electrodes = {current_set{:}, 'HEOG'}; % HEOG will be removed latere (NB! hard coded) 
-if do_p_struct; p.electrodes = electrodes(1:end-1); end % save to p
-
-elec2plot = find(ismember({EEG.chanlocs.labels}, electrodes)); % find electrode indexes
-elec2plotNames = {EEG.chanlocs(elec2plot).labels}; % save the electrode names to the variable
-
-fprintf('\nNumber of electrodes aggregated (NB! last channel, which is EOG, will be discarded - hard coded):  %d ', length(elec2plot)); fprintf('\n')
-
-% elec2plotNames 
-%% prepare psychophysics data
-condi = find(ismember(behDat.trials2label, behDatConds(eventIndx))); % find trial indexes for that event type
-% behDat.trials2response(condi())
-%% epoch the data
-% ressProov = double.empty(4, 64, 3500,0);
-
-% these will be over writen for each event type
-ressData = {}; ressDataAvg = {};
-thisCueEvent = 0;
-thisEventBlinks = {};
-meanComplexFFT = [];
-tIndex = zeros(65,1);% []; % valid coherence trials
-validRess = zeros(65,1); % valid ress trials
-rtPsychoTrials = []; rtPsychoTrials = []; correctPsychoTrials = []; % not rally necessary but ok 
-pauseForInspection = 0;
-%%
-while (thisCueEvent <= currentIndex-2) % for thisCueEvent = 1:(currentIndex-1)
-     thisCueEvent = thisCueEvent + 1;
-     
-     startSample = round(eventOnset(thisCueEvent)+transient*srate); % *EEG.srate/1000 % Compensate for the fact that latencies are in ms but data are in samples. Is that really the case?   
-     % +(EEG.srate/2)
-     endSample = round(eventOffset(thisCueEvent)); % 
-     
-     trialDur = eventDurs(dsearchn(eventDurs', endSample-startSample)); % find the trial duration matching the current trial
-
-     % redifine the end or the start of the epoch to be suitable for
-     % coherent averaging 
-
-     startSample = endSample-trialDur; % find the event oncet if the epoch is calculated from stim event       
-
-          
-    % Pull out a timeseries that follows/preceeds the event 
-
-    allSamples = EEG.data(elec2plot,startSample:endSample-1); % channels
-    
-%% prepare ress data matrix
-    if doRess
-        allSamplesRess = EEG_raw.data(1:end-1,startSample:endSample-1); % channels % not including the ocular channel (end-1) 
-        allSamplesRess = bsxfun(@minus, allSamplesRess, mean(EEG_raw.data(1:end-1,startSample-srate/2:startSample),2)); % 
-        rebinnedDataRess = reshape(allSamplesRess, size(allSamplesRess,1), EEG.srate,trialDur/EEG.srate);    
-        artefacts = ones(size(rebinnedDataRess,3),1); % accept all for RESS
-    end
-%     ressThisEvent = rebinnedDataRe; % not including the ocular channel (end-1) 
-
-%     [artefacts, ~] = findManual(rebinnedDataRess, manualCheck, size(rebinnedDataRess,3), escapeKey, 1);
-
-
-    if doRess && sum(artefacts) ~= 0
-        validRess(thisCueEvent) = 1;
-        ressData{thisCueEvent} = rebinnedDataRess(:,:,find(artefacts));
-        ressDataAvg{thisCueEvent} = mean(rebinnedDataRess(:,:,find(artefacts)),3);
-    end 
-    
-%% just to inspect the single trials    
-
-rt = str2num(behDat.trueRT{condi(thisCueEvent+fromTrial)});
-isCorrect = behDat.trials2response(condi(thisCueEvent+fromTrial));
-contrast = str2num(behDat.trials2intensity{condi(thisCueEvent+fromTrial)});
-
-subtrMean = bsxfun(@minus, allSamples, mean(allSamples,2)); % 
-zscored = bsxfun(@rdivide, subtrMean, std(allSamples,0,2)); % 
-
-%%
-if plotPlinks && findBlinks
-    figure(1)
-    subplot(2,1,1)
-    plot(allSamples')
-    hold on
-end
-
-%% find and draw blinks for this trial
-if findBlinks 
-startSampleInSeconds = startSample/srate;
-endSampleInSeconds = endSample/srate;
-
-
-% extend the window size
-extS = 0.01;     
-extE = 0.01;
-if (startSampleInSeconds  - extS) > 0
-    startSampleInSeconds = startSampleInSeconds - extS;
-end
-    endSampleInSeconds = endSampleInSeconds + extE;
-    
-    
-numElements = arrayfun(@(x) (x.peakTimeBlink >= startSampleInSeconds && x.peakTimeBlink <= endSampleInSeconds) , blinkProperties);
-bIndx = find(numElements);
-
-bcount = size(bIndx,2);
-
-nrSegments = trialDur/srate;
-notblinks = ones(nrSegments,1);
-blinkPeaks = zeros(size(bIndx,2),1);
-for ii = 1:size(bIndx,2)
-    peakT = round( blinkProperties(bIndx(ii)).peakTimeBlink*500 ); % find current blink indexes
-    dur = round( (blinkProperties(bIndx(ii)).durationBase*500) /2 ); % find the blinks left and right shoulder
-    
-    % recalibrate for the plot
-     peakT = peakT - startSample; 
-     blinkPeaks(ii,1) = peakT;
-if plotPlinks    
-    yl = ylim; 
-%         for hpi = 1:size(blinkArtifacts,2) 
-        hp = patch([peakT-dur peakT-dur peakT+dur peakT+dur ]...
-            ,[yl(1) yl(2) yl(2) yl(1)],'k',...
-        'facecolor', [.75,.75,.75],'edgecolor',[.75,.075,.275],...
-        'erasemode','xor') ;
-%         end
-%     end 
-
-
-
-
-    title(['subject: ',num2str(subi),'; trial: ', num2str(thisCueEvent+fromTrial),...
-        '; condition: ', strrep(event{eventIndx}, '_',' '), '; is correct: ',...
-        isCorrect{:}, '; RT: ', num2str(rt), ' blinks: ', num2str(bcount)]) % 
-%     set(gca,'xlim', [0 3500], 'FontSize',12)
-end
-
-if pauseForInspection && plotPlinks
-    pause()
-end
- 
-
-%% find a vector containing boolean values for segment rejection (1 keep the trial)
-if ii == size(bIndx,2)
-    
-a = ceil( blinkPeaks/srate);
-a(a == 0) = []; a(a > nrSegments) = [];
-
-seg = zeros(nrSegments,1);     
-seg(a,1) = 1;
-
-notblinks = seg < 1;
-
-end
-% txt = find(notblinks == 0)
-
-end
-
-end
-if plotPlinks && findBlinks; hold off; end
-
-%% extract some data
-if isempty(rt)
-    rtPsychoTrials(thisCueEvent+fromTrial) = nan;
-else
-    rtPsychoTrials(thisCueEvent+fromTrial) = rt;
-end
-
-contrastPsychoTrials(thisCueEvent+fromTrial) = contrast;
-
-correctPsychoTrials(thisCueEvent+fromTrial) = str2num(isCorrect{:});
-
-%% prepare fft data   
-    if size(elec2plot,2)-1 > 1
-        allSamples=squeeze(mean(allSamples(1:end-1, :))); % mean of channels (not including ocular channel)
-    else
-        allSamples=squeeze(allSamples(1:end-1, :)); 
-    end
-    
-    % We can now bin into 1 second intervals
-    rebinnedData=reshape(allSamples, EEG.srate,trialDur/EEG.srate);
-    fftRebinned=fft(rebinnedData); % Perform FFT down time
-    % Now the magic happens :) We can average coherently across bins to remove
-    % noise
-%%
-goBack = 0;
-%[~, goBack] = findManual(rebinnedData, manualCheck, trialDur/EEG.srate, escapeKey, 2);
-% notblinks is a vector where 0 indicates a blink
-
-if findBlinks == 0
-    notblinks = 1:size(rebinnedData,2);
-end
-
-if sum(notblinks) ~= 0 % If there is at least one segment without a blink
-    rebinnedData = rebinnedData(:,find(notblinks));
-    
-%     blinkIndex = blinkIndex + 1;
-%     trialId(thisCueEvent) = thisCueEvent+fromTrial;
-%     meanComplexFFTallTrials(:,blinkIndex) = mean(fftRebinned,2); % keep this for all the trials
-
-    meanComplexFFT(:,thisCueEvent) = mean(fftRebinned,2); % nb abs % This is the mean complex FFT for this trial (averaged across bins)
-    tIndex(thisCueEvent+fromTrial) = 1;
-
-
-else  
-    fprintf('no good segments found in this trial \n')
-end
-
-thisEventBlinks{thisCueEvent,1} = notblinks;
-% 
-
-if (thisCueEvent + goBack) > 0
-thisCueEvent = thisCueEvent + goBack;
-end
-
-%meanComplexFFT(:,thisCueEvent) = mean(fftRebinned,2); % nb abs % This is the mean complex FFT for this trial (averaged across bins)
-%thisEventBlinks{thisCueEvent,1} = blinks;   
-    
-end
-
-% grandAverage{eventIndx}=mean((meanComplexFFT),2); % Average across trials - the abs means we do NOT still keep coherent information
-grandAverage{subi, eventIndx} = mean(meanComplexFFT(:,find(tIndex)),2); % Average across trials - the abs means we do NOT still keep coherent information
-if ~isempty(meanComplexFFT) && doSingleTrial
-    allTheSingleTrials{subi, eventIndx} =  abs(meanComplexFFT(1:60,find(tIndex)) ).^2; % Here we lose coherence.
-end
-
-if findBlinks
-    allBlinks{subi, eventIndx} = thisEventBlinks;
-end
-
-if do_p_struct
-    % for the p
-    p.subject(subi).condition(eventIndx).data.EEG.artefacts = thisEventBlinks; % allBlinks; 
-    p.subject(subi).condition(eventIndx).data.EEG.validTrials = {find(tIndex)}; 
-    p.subject(subi).condition(eventIndx).data.EEG.single.amplitude = allTheSingleTrials; 
-    p.subject(subi).condition(eventIndx).data.EEG.average.amplitude = grandAverage; 
-
-    p.subject(subi).condition(eventIndx).data.EEG.ressDataSegments = ressData;% squeeze( ressData(subi, eventIndx, find(validRess)) ); 
-    p.subject(subi).condition(eventIndx).data.EEG.ressDataTrials = ressDataAvg;
-    p.ressDataStructure = {'participant', 'condition', 'trials', 'time'};
-    p.allTheSingleTrialsStructure = {'participant', 'condition', 'frequency', 'trials'};
-    
-    % rt, intesity, correct
-    p.subject(subi).condition(eventIndx).data.psychophysics.correct = {correctPsychoTrials}; 
-    p.subject(subi).condition(eventIndx).data.psychophysics.rt = {rtPsychoTrials};
-    p.subject(subi).condition(eventIndx).data.psychophysics.contrast = {contrastPsychoTrials};
-end
-
-if doRess
-    ressAllSegments.subject(subi).condition(eventIndx).data = ressData;% squeeze( ressData(subi, eventIndx, find(validRess)) ); 
-    ressAllTrials.subject(subi).condition(eventIndx).data = ressDataAvg;% 
-end
-
-%% SNR
-
-hz = abs(grandAverage{subi, eventIndx}(2:44)).^2;
-snrE = zeros(1,size(hz,1));
-skipbins =  1; % 1 Hz, hard-coded! (not skipping)
-numbins  = 2; %  2 Hz, also hard-coded!
-
-% loop over frequencies and compute SNR
-for hzi=( numbins+1 ):( length(hz)-numbins-1 )
-    numer = hz(hzi);
-    denom = rms( hz([( hzi-numbins ):(hzi-skipbins) (hzi+skipbins):(hzi+numbins)]) ); 
-    snrE(hzi) =  (numer-denom)/(numer+denom); %numer./denom;
-end  
-%%
-% %     subplot(2,2,eventIndx); hold on
-% %     title(strrep(event{eventIndx}, '_',' '))
-
-%    bar(abs(grandAverage(2:60)));
-
-%     bar(abs(grandAverage{eventIndx}(2:60)));
-allSnrE{subi,eventIndx} = snrE;
-
-if do_p_struct; p.subject(subi).condition(eventIndx).data.EEG.average.snr = snrE; end
-
-% %     bar(allSnrE{subi,eventIndx});
-
-%     stem(abs(grandAverage{eventIndx}(2:60)),'k','linew',3,'markersize',2.5,'markerfacecolor','r')
-%     bar(squeeze( mean(snrE(:, eventIndx, 1:end),1)));
-end % next event
-if do_p_struct; p.subject(subi).psychoPyTable = behDat; end
-% pid = p.subject(subi);
-% save([[dataDir 'individual\'] date p.subject(subi).Id '.mat'], 'pid', '-v7.3');
-
-end % next subject
-
-% save data ressData
-if stimLocked == 1
-    save([dataDir date '-TFUR-SNRs-OC-stimLocked.mat'], 'allSnrE', '-v7.3');
-    if doSingleTrial; save([dataDir date '-TFUR-amp-OC-stimLocked.mat'], 'allTheSingleTrials', '-v7.3'); end
-    save([dataDir date '-TFUR-grandAverage-OC-stimLocked.mat'], 'grandAverage', '-v7.3');
-else
-    save([dataDir date '-TFUR-SNRs-perdLocked-OC.mat'], 'allSnrE', '-v7.3');
-%     save([dataDir date '-TFUR-SNRs-perdLocked-OC.mat'], 'allSnrE', '-v7.3');
-    if doSingleTrial; save([dataDir date '-TFUR-amp-OC.mat'], 'allTheSingleTrials', '-v7.3'); end
-end
-
-if doRess
-    save([dataDir date '-TFUR-ressAllSegments-stim-OC.mat'], 'ressAllSegments', '-v7.3');
-    save([dataDir date '-TFUR-ressAllTrials-stim-OC.mat'], 'ressAllTrials', '-v7.3');
-end
-
-if do_p_struct
-    save([dataDir date '-allData.mat'], 'p', '-v7.3');  
-end
-do.montage = 0;
-end
-
-while do.singleElectrodes
-%% all electrode names    
 all64 = {'Fp1','Fpz','Fp2','F7','F3','Fz','F4','F8','FC5','FC1','FC2','FC6','M1','T7','C3','Cz','C4','T8','M2','CP5','CP1','CP2'...
     'CP6','P7','P3','Pz','P4','P8','POz','O1','Oz','O2','AF7','AF3','AF4','AF8','F5','F1','F2','F6','FC3','FCz','FC4','C5'...
 'C1','C2','C6','CP3','CPz','CP4','P5','P1','P2','P6','PO5','PO3','PO4','PO6','FT7','FT8','TP7','TP8','PO7','PO8'};
-elecStruct = struct();
+
 %% loop through all the datasets in implistM (pre-processed data) one by one
 manualCheck = 0; % check manually for artefacts
 for subi = 1:length(implistM) 
 % empty them after each iteration
-plotPlinks = 0;
 meanComplexFFT = [];
 thisEventBlinks = {};
     
@@ -724,6 +278,11 @@ else
     event = {'PRED_HIGH' 'PRED_LOW' 'PRED_RND_H' 'PRED_RND_L'};
 end
 
+% other events
+% event = {{'STIM_HIGH', 'STIM_LOW'}, {'STIM_RND_L', 'STIM_RND_H'}}; 
+% event = {'PRED_HIGH' 'PRED_LOW' 'PRED_RND_H' 'PRED_RND_L'}; 
+% event = {'CUE_HIGH' 'CUE_LOW' 'CUE_RND_H' 'CUE_RND_L'};
+% event = {'ITI'};
 
 % this is the transient response that will be subtracted from the epoched data
 % note that in majority of cases it leads to noninteger durations
@@ -746,9 +305,14 @@ fromTrial = 0;
 
 %% save same data for the p structure
 
+p.subject(subi).conditionLabels  = event;
+% p.conditionLabels = event;
+p.transient = transient;
+p.fromTrial = fromTrial;
+p.subject(subi).psychoLabels = behDatConds; 
+p.subject(subi).Id = implistM(subi).name;
+
 %%
-for eleci = 1:64
-current_elctrode = all64(eleci);    
 for eventIndx = 1:length(event) % loop through the event categories
 
 % Find all the events corresponding to the eventIndex
@@ -777,16 +341,14 @@ end
  
 fprintf('\nFound %d events \n',currentIndex-1);
 %% select channels
-% electrodes = {'O1', 'Oz', 'O2', 'HEOG'}; % HEOG will be removed latere (NB! hard coded) 'POz', 'P1', 'P2', 'PO5', 'PO3', 'PO4', 'PO6',
+electrodes = {'O1', 'Oz', 'O2', 'HEOG'}; % HEOG will be removed latere (NB! hard coded) 'POz', 'P1', 'P2', 'PO5', 'PO3', 'PO4', 'PO6',
 
-electrodes = {current_elctrode{:}, 'HEOG'};
+p.electrodes = electrodes(1:end-1); % save to p
 
 elec2plot = find(ismember({EEG.chanlocs.labels}, electrodes)); % find electrode indexes
 elec2plotNames = {EEG.chanlocs(elec2plot).labels}; % save the electrode names to the variable
 
 fprintf('\nNumber of electrodes aggregated (NB! last channel, which is EOG, will be discarded - hard coded):  %d ', length(elec2plot)); fprintf('\n')
-
-if length(elec2plot) > 1
 % elec2plotNames 
 %% prepare psychophysics data
 condi = find(ismember(behDat.trials2label, behDatConds(eventIndx))); % find trial indexes for that event type
@@ -823,6 +385,23 @@ while (thisCueEvent <= currentIndex-2) % for thisCueEvent = 1:(currentIndex-1)
 
     allSamples = EEG.data(elec2plot,startSample:endSample-1); % channels
     
+%% prepare ress data matrix
+    
+    allSamplesRess = EEG_raw.data(1:end-1,startSample:endSample-1); % channels % not including the ocular channel (end-1) 
+    allSamplesRess = bsxfun(@minus, allSamplesRess, mean(EEG_raw.data(1:end-1,startSample-srate/2:startSample),2)); % 
+    rebinnedDataRess = reshape(allSamplesRess, size(allSamplesRess,1), EEG.srate,trialDur/EEG.srate);
+
+%     ressThisEvent = rebinnedDataRe; % not including the ocular channel (end-1) 
+
+%     [artefacts, ~] = findManual(rebinnedDataRess, manualCheck, size(rebinnedDataRess,3), escapeKey, 1);
+    artefacts = ones(size(rebinnedDataRess,3),1); % accept all for RESS
+
+    if sum(artefacts) ~= 0 
+        validRess(thisCueEvent) = 1;
+        ressData{thisCueEvent} = rebinnedDataRess(:,:,find(artefacts));
+        ressDataAvg{thisCueEvent} = mean(rebinnedDataRess(:,:,find(artefacts)),3);
+    end 
+    
 %% just to inspect the single trials    
 
 rt = str2num(behDat.trueRT{condi(thisCueEvent+fromTrial)});
@@ -833,12 +412,11 @@ subtrMean = bsxfun(@minus, allSamples, mean(allSamples,2)); %
 zscored = bsxfun(@rdivide, subtrMean, std(allSamples,0,2)); % 
 
 %%
-if plotPlinks
-    figure(1)
-    subplot(2,1,1)
-    plot(allSamples')
-    hold on
-end
+figure(1)
+subplot(2,1,1)
+plot(allSamples')
+hold on
+
 %% find and draw blinks for this trial
  
 startSampleInSeconds = startSample/srate;
@@ -869,22 +447,25 @@ for ii = 1:size(bIndx,2)
     % recalibrate for the plot
      peakT = peakT - startSample; 
      blinkPeaks(ii,1) = peakT;
-     
-if plotPlinks    
+    
     yl = ylim; 
+%         for hpi = 1:size(blinkArtifacts,2) 
+        hp = patch([peakT-dur peakT-dur peakT+dur peakT+dur ]...
+            ,[yl(1) yl(2) yl(2) yl(1)],'k',...
+        'facecolor', [.75,.75,.75],'edgecolor',[.75,.075,.275],...
+        'erasemode','xor') ;
+%         end
+%     end 
 
-    hp = patch([peakT-dur peakT-dur peakT+dur peakT+dur ]...
-    ,[yl(1) yl(2) yl(2) yl(1)],'k',...
-    'facecolor', [.75,.75,.75],'edgecolor',[.75,.075,.275],...
-    'erasemode','xor') ;
+
+
 
     title(['subject: ',num2str(subi),'; trial: ', num2str(thisCueEvent+fromTrial),...
         '; condition: ', strrep(event{eventIndx}, '_',' '), '; is correct: ',...
         isCorrect{:}, '; RT: ', num2str(rt), ' blinks: ', num2str(bcount)]) % 
 %     set(gca,'xlim', [0 3500], 'FontSize',12)
-end
 
-if pauseForInspection && plotPlinks
+if pauseForInspection
     pause()
 end
  
@@ -905,7 +486,7 @@ end
 
 end
 
-if plotPlinks; hold off; end
+hold off
 
 %% extract some data
 if isempty(rt)
@@ -919,10 +500,8 @@ contrastPsychoTrials(thisCueEvent+fromTrial) = contrast;
 correctPsychoTrials(thisCueEvent+fromTrial) = str2num(isCorrect{:});
 
 %% prepare fft data   
-    if size(elec2plot,2)-1 > 1 
+    if size(elec2plot,2) > 1
         allSamples=squeeze(mean(allSamples(1:end-1, :))); % mean of channels (not including ocular channel)
-    else
-        allSamples=squeeze(allSamples(1:end-1, :)); 
     end
     
     % We can now bin into 1 second intervals
@@ -966,9 +545,27 @@ end
 grandAverage{subi, eventIndx} = mean(meanComplexFFT(:,find(tIndex)),2); % Average across trials - the abs means we do NOT still keep coherent information
 if ~isempty(meanComplexFFT)   
     allTheSingleTrials{subi, eventIndx} =  abs(meanComplexFFT(1:60,find(tIndex)) ).^2; % Here we lose coherence.
+    p.allTheSingleTrialsStructure = {'participant', 'condition', 'frequency', 'trials'};
 end
 allBlinks{subi, eventIndx} = thisEventBlinks;
- 
+
+% for the p
+p.subject(subi).condition(eventIndx).data.EEG.artefacts = thisEventBlinks; % allBlinks; 
+p.subject(subi).condition(eventIndx).data.EEG.validTrials = {find(tIndex)}; 
+p.subject(subi).condition(eventIndx).data.EEG.single.amplitude = allTheSingleTrials; 
+p.subject(subi).condition(eventIndx).data.EEG.average.amplitude = grandAverage; 
+
+p.subject(subi).condition(eventIndx).data.EEG.ressDataSegments = ressData;% squeeze( ressData(subi, eventIndx, find(validRess)) ); 
+p.subject(subi).condition(eventIndx).data.EEG.ressDataTrials = ressDataAvg;
+p.ressDataStructure = {'participant', 'condition', 'trials', 'time'};
+
+ressAllSegments.subject(subi).condition(eventIndx).data = ressData;% squeeze( ressData(subi, eventIndx, find(validRess)) ); 
+ressAllTrials.subject(subi).condition(eventIndx).data = ressDataAvg;% 
+
+% rt, intesity, correct
+p.subject(subi).condition(eventIndx).data.psychophysics.correct = {correctPsychoTrials}; 
+p.subject(subi).condition(eventIndx).data.psychophysics.rt = {rtPsychoTrials};
+p.subject(subi).condition(eventIndx).data.psychophysics.contrast = {contrastPsychoTrials};
 
 %% SNR
 
@@ -984,35 +581,39 @@ for hzi=numbins+1:length(hz)-numbins-1
     snrE(hzi) = numer./denom;
 end  
 %%
+% %     subplot(2,2,eventIndx); hold on
+% %     title(strrep(event{eventIndx}, '_',' '))
+
+%    bar(abs(grandAverage(2:60)));
+
+%     bar(abs(grandAverage{eventIndx}(2:60)));
 allSnrE{subi,eventIndx} = snrE;
-else
-   allSnrE = [];
-   allTheSingleTrials = [];
-end
+p.subject(subi).condition(eventIndx).data.EEG.average.snr = snrE; 
+
+% %     bar(allSnrE{subi,eventIndx});
+
+%     stem(abs(grandAverage{eventIndx}(2:60)),'k','linew',3,'markersize',2.5,'markerfacecolor','r')
+%     bar(squeeze( mean(snrE(:, eventIndx, 1:end),1)));
 end % next event
-elecStruct.electrode(eleci).allSnrE = allSnrE;
-elecStruct.electrode(eleci).allTheSingleTrials = allTheSingleTrials;
-end % next electrode
+p.subject(subi).psychoPyTable = behDat; 
+% pid = p.subject(subi);
+% save([[dataDir 'individual\'] date p.subject(subi).Id '.mat'], 'pid', '-v7.3');
 
-end % end subject
-
-save([dataDir date '-TFUR-amp-electStruct.mat'], 'elecStruct', '-v7.3');
+end % next subject
 
 % save data ressData
-% if stimLocked == 1
-%     save([dataDir date '-TFUR-SNRs-Occipital-stimLocked.mat'], 'allSnrE', '-v7.3');
-%     save([dataDir date '-TFUR-amp-Occipital-stimLocked.mat'], 'allTheSingleTrials', '-v7.3');
-%     save([dataDir date '-TFUR-grandAverage-Occipital-stimLocked.mat'], 'grandAverage', '-v7.3');
-% else
-%     save([dataDir date '-TFUR-SNRs-Occipital-perdLocked-Oz.mat'], 'allSnrE', '-v7.3');
-%     save([dataDir date '-TFUR-amp-Occipital-perdLocked-Oz.mat'], 'allTheSingleTrials', '-v7.3');
-% end
-
-do.singleElectrodes = 0;
+if stimLocked == 1
+    save([dataDir date '-TFUR-SNRs-Occipital-stimLocked.mat'], 'allSnrE', '-v7.3');
+    save([dataDir date '-TFUR-amp-Occipital-stimLocked.mat'], 'allTheSingleTrials', '-v7.3');
+    save([dataDir date '-TFUR-grandAverage-Occipital-stimLocked.mat'], 'grandAverage', '-v7.3');
+else
+    save([dataDir date '-TFUR-SNRs-Occipital-perdLocked-Oz.mat'], 'allSnrE', '-v7.3');
+    save([dataDir date '-TFUR-amp-Occipital-perdLocked-Oz.mat'], 'allTheSingleTrials', '-v7.3');
 end
 
-
-
+% save([dataDir date '-TFUR-ressAllSegments.mat'], 'ressAllSegments', '-v7.3');
+% save([dataDir date '-TFUR-ressAllTrials.mat'], 'ressAllTrials', '-v7.3');
+% save([dataDir date '-allData.mat'], 'p', '-v7.3');
 
 %% blinkStructure
 % indiDir = 'C:\Users\Richard Naar\Documents\dok\ssvep\Visit to York\EEG data\individual\'; % data after epoching and artefact inspection
@@ -1187,24 +788,11 @@ save([dataDir date '-allRESSsnr.mat'], 'snrRESS', '-v7.3');
 do.ress = 0;
 end
 %% just to try
-
-implistSNR = dir([dataDir, '*.mat']);  %orderfields(implistSNR, date) 
-% [x,idx] = sort(datenum([{implistSNR.date}]), 'descend');
-% implistSNR = implistSNR(idx);
-dati = 8;
-load([dataDir, implistSNR(dati).name]); % load data
-
-fprintf('loading participant: %s \n', implistSNR(dati).name);
-%%
-srate = 500;
-nfft = ceil( srate/0.1 ); % .1 Hz resolution
-hzR    = linspace(0,srate,nfft);
-
 meanRESS1 = 0; meanRESS2 = 0; meanRESS3 = 0; meanRESS4 = 0; meanRESS5 = 0;
 for subi = 1:23
     freso = 0.1;
     f2show = 120;
-    f = 5;
+    f = 2;
     meanRESS1 = meanRESS1 + snrRESS{subi,1,f}(1:(f2show/freso));
     meanRESS2 = meanRESS2 + snrRESS{subi,2,f}(1:(f2show/freso)); 
     meanRESS3 = meanRESS3 + snrRESS{subi,3,f}(1:(f2show/freso)); 
@@ -1246,7 +834,7 @@ sub = 1;
 
 while do.saveCsv == 1
 matList = dir([dataDir, '*.mat']); 
-dati = 16;
+dati = 6;
 load([dataDir matList(dati).name])
 
 fprintf('loading dataset: %s', matList(dati).name); fprintf('\n')
@@ -1256,7 +844,7 @@ fprintf('loading dataset: %s', matList(dati).name); fprintf('\n')
 iLow = [4:4:40];
 iHigh = [15:15:40];
 imf = [11, 19, 22, 27, 38];
-% imfTxt = [{'F2 - F1'},{'F1 + F2'},{'(2*F2) - (2*F1)'},{'3*F1 + F2'},{'(F1 + F2)*2'}, {'3*F2 - F1'}];
+imfTxt = [{'F2 - F1'},{'F1 + F2'},{'(2*F2) - (2*F1)'},{'3*F1 + F2'},{'(F1 + F2)*2'}, {'3*F2 - F1'}];
 allFrex = [iLow, iHigh, imf];
 
 % FOIsLow = zeros(size(subtraction)); FOIsLow(iLow) = subtraction(iLow);
@@ -1265,7 +853,6 @@ header = [{'SubId', 'cond',...
     'low4', 'low8', 'low12', 'low16', 'low20', 'low24','low28', 'low32', 'low36', 'low40',...
     'high15', 'high30', ...
     'F11', 'F19', 'F22','F27', 'F38'}];
-
 data = {};
 data(1, :) = header;
 subDat = [];
@@ -1275,41 +862,28 @@ for rind = 1:size(allSnrE,1)
 %       high = allSnrE{rind,1}(currentWin); % PRED_HIGH
        
        
-%V1       
+       
       high = allSnrE{rind,1}(allFrex); % PRED_HIGH
       low =  allSnrE{rind,2}(allFrex); % PRED_LOW
       high_rnd = allSnrE{rind,3}(allFrex); % PRED_RND_H
       low_rnd = allSnrE{rind,4}(allFrex); % PRED_RND_L
-
-
-%       high_rnd = allSnrE{rind,3}(allFrex); % PRED_RND_H
-%       low_rnd = allSnrE{rind,4}(allFrex); % PRED_RND_L
-%       rnd_mean = (high_rnd + low_rnd)/2;
-%       
-%       high = allSnrE{rind,1}(allFrex) - rnd_mean; % PRED_HIGH
-%       low =  allSnrE{rind,2}(allFrex) - rnd_mean; % PRED_LOW
-
-      
       id = num2str(rind);
 %   end
   if rind < 2
-      top = 1; bottom = 4; %V1
-%       top = 1; bottom = 2;
+      top = 1; bottom = 4;
   else
-      top = top+3 ; bottom = bottom+3; %V1
-%       top = top+1 ; bottom = bottom+1; 
+      top = top+3 ; bottom = bottom+3;
   end
-%V1  
+  
   data(rind+top:rind+bottom, :) =  [{id}, {'Cued high'}, num2cell(high); {id}, {'Cued low'}, num2cell(low); {id},...
       {'Non-cued high'}, num2cell(high_rnd); {id}, {'Non-cued low'}, num2cell(low_rnd)];
-%   data(rind+top:rind+bottom, :) =  [{id}, {'Cued high'}, num2cell(high); {id}, {'Cued low'}, num2cell(low)];
    
 end
 
 addpath('C:\Users\Richard Naar\Documents\Matlab toolboxes\letswave6-master\external')
 
 cd(dataDir)
-cell2csv([date '-TFUR-SNRs-Pz-Poz-Oz.csv'], data)
+cell2csv([date '-TFUR-SNRs-occipital-pred-Oz.csv'], data)
 
 do.saveCsv = 0;
 end
@@ -1374,7 +948,7 @@ while do.saveCsvSingle == 1
 matList = dir([dataDir, '*.mat']); 
 load([dataDir matList(4).name])
 
-fprintf('loading dataset: %s', matList(4).name); fprintf('\n')
+fprintf('loading dataset: %s', matList(1).name); fprintf('\n')
 
 iLow = [4:4:50];
 iHigh = [15:15:50];
@@ -1405,8 +979,8 @@ nTrials(eventi) = size(allTheSingleTrials{rind,eventi},2);
 for triali = 1:nTrials(eventi)    
 hz = allTheSingleTrials{rind, eventi}(2:end, triali);
 snrE = zeros(1,size(hz,1));
-skipbins =  0; % 1 Hz, hard-coded! (not skipping)
-numbins  = 1; %  2 Hz, also hard-coded!
+skipbins =  1; % 1 Hz, hard-coded! (not skipping)
+numbins  = 2; %  2 Hz, also hard-coded!
 
 % loop over frequencies and compute SNR
 for hzi=numbins+1:length(hz)-numbins-1
@@ -1489,85 +1063,10 @@ event = {'PRED_HIGH' 'PRED_LOW' 'PRED_RND_H' 'PRED_RND_L'};
 implistSNR = dir([dataDir, '*.mat']);  %orderfields(implistSNR, date) 
 % [x,idx] = sort(datenum([{implistSNR.date}]), 'descend');
 % implistSNR = implistSNR(idx);
-analyzeAmp = 0;
 
-if analyzeAmp
-    dati = 21;% 16;
-    load([dataDir, implistSNR(dati).name]); % load data
-    fprintf('loading participant: %s \n', implistSNR(dati).name);
-%     allSnrE = allTheSingleTrials; 
-    nFrex = size(allTheSingleTrials{1}, 1)-1;
-    datStandard = zeros((size(allTheSingleTrials{1}, 1)-1)*4, size(allTheSingleTrials,1));
-    for subi = 1:length(allTheSingleTrials)
-        datStandard(:, subi) = [mean(allTheSingleTrials{subi,1}(2:end,:),2);... 
-                                mean(allTheSingleTrials{subi,2}(2:end,:),2);...
-                                mean(allTheSingleTrials{subi,3}(2:end,:),2);...
-                                mean(allTheSingleTrials{subi,4}(2:end,:),2)];
-    end
+load([dataDir, implistSNR(1).name]); % load data
 
-elseif analyseAmp2
-
-    dati = 42;% 16; %20; 
-    allSnrE = grandAverage;
-    
-    load([dataDir, implistSNR(dati).name]); % load data
-    fprintf('loading participant: %s \n', implistSNR(dati).name);
-    
-    
-%     nFrex = size([allSnrE{1,1}],2); %nFrex = size([allSnrE{1,1}],1);
-    nFrex = 43; %nFrex = size([allSnrE{1,1}],1);
-    
-%     hz = abs(grandAverage{subi, eventIndx}(2:44)).^2;
-      
-    datStandard = [];
-    for condi = 1:4% size(allSnrE,2)
-        datn = squeeze(cat(3,allSnrE{:,condi}(1:10)));
-        datStandard = [datStandard; datn];
-    end
-    
-else
-    dati = 16; %20; 
-    
-    load([dataDir, implistSNR(dati).name]); % load data
-    fprintf('loading participant: %s \n', implistSNR(dati).name);
-    
-    
-    nFrex = size([allSnrE{1,1}],2); %nFrex = size([allSnrE{1,1}],1);
-      
-    datStandard = [];
-    for condi = 1:size(allSnrE,2)
-        datn = squeeze(cat(3,allSnrE{:,condi}));
-        datStandard = [datStandard; datn];
-    end
-end
-
-% meanCentered = bsxfun(@minus,datStandard, mean(datStandard));
-% modifZdat = bsxfun(@rdivide, meanCentered, mean(datStandard));
-modifZdat = datStandard;
-% medianCentered = .6745.*bsxfun(@minus,datStandard,median(datStandard));
-% modifZdat = bsxfun(@rdivide, medianCentered, median(abs(medianCentered)));
-
-
-for histi = 1:23
-    hist(datStandard(:,histi))
-    pause()
-end
-
-for subi = 1:23
-    
-    first = modifZdat(1:nFrex,subi);
-    second = modifZdat(nFrex+1:nFrex*2,subi);
-    third = modifZdat(nFrex*2+1:nFrex*3,subi);
-    fourth = modifZdat(nFrex*3+1:nFrex*4,subi);
-
-    bar(first)
-    hold
-    bar(second,'g')
-    bar(third,'r')
-    bar(fourth,'k')
-    hold off
-    pause()
-end
+fprintf('loading participant: %s \n', implistSNR(1).name);
 
 for frex = 1:2
 comp1 = frex;  
@@ -1580,26 +1079,13 @@ foiHigh = [15:15:40];%  foiHigh = foiHigh+1;
 figure(frex)
 subplot(3,1,1); hold on
 % bar(grandAverage{comp1}(2:60));
-% bar(mean( squeeze(cat(3,allSnrE{:,comp1})), 2));
-
-if comp1 == 1
-    predDat = mean(modifZdat(1:nFrex,:),2);
-else
-    predDat = mean(modifZdat(nFrex+1:nFrex*2,:),2);
-end
-    
-bar(predDat)
-
+bar(mean( squeeze(cat(3,allSnrE{:,comp1})), 2));
 imf = [11, 19, 22, 27, 38, 41];
 % imfTxt = ['F2-F1','F1+F2','2*F2-2*F1','3*F1+F2','(F1+F2)*2'];
 imfTxt = [{'F2 - F1'},{'F1 + F2'},{'(2*F2) - (2*F1)'},{'3*F1 + F2'},{'(F1 + F2)*2'}, {'3*F2 - F1'}];
-% maxY = max(mean( squeeze(cat(3,allSnrE{:,comp1})), 2))+1;
-maxY = max(predDat)+100; minY = min(predDat);
+maxY = max(mean( squeeze(cat(3,allSnrE{:,comp1})), 2))+1;
 % text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf))) % *mean(EEG.data(31,:))
-% set(gca,'ylim',[min(mean( squeeze(cat(3,allSnrE{:,comp1})), 2)) maxY+2], 'FontSize',12)
-% set(gca,'ylim',[minY maxY], 'FontSize',12)
-
-
+set(gca,'ylim',[min(mean( squeeze(cat(3,allSnrE{:,comp1})), 2)) maxY+2], 'FontSize',12)
 %% plot the colors
 % FOIsLow = zeros(size(grandAverage{1})); FOIsLow(foiLow) = grandAverage{1}(foiLow);
 % bar(FOIsLow(2:60), 'r')
@@ -1609,18 +1095,11 @@ maxY = max(predDat)+100; minY = min(predDat);
 title(strrep(event{comp1}, '_',' '))
 %% high - random
 % subtraction = grandAverage{comp1}(1:60)-(grandAverage{3}(1:60)+grandAverage{4}(1:60))/2;
-% subtraction_lrnd = mean( squeeze(cat(3,allSnrE{:,comp1})), 2)-(mean( squeeze(cat(3,allSnrE{:,3})), 2)+mean( squeeze(cat(3,allSnrE{:,4})), 2))/2;
-
-highrnd = mean(modifZdat(nFrex*2+1:nFrex*3,:),2);
-lowrnd = mean(modifZdat(nFrex*3+1:nFrex*4,:),2);
-
-subtraction_lrnd = predDat - (lowrnd+highrnd)/2;
-
-
+subtraction_lrnd = mean( squeeze(cat(3,allSnrE{:,comp1})), 2)-(mean( squeeze(cat(3,allSnrE{:,3})), 2)+mean( squeeze(cat(3,allSnrE{:,4})), 2))/2;
 
 subplot(3,1,2); hold on
 bar(subtraction_lrnd);
-maxY = max(subtraction_lrnd)+10; minY = min(subtraction_lrnd)-10;
+maxY = max(subtraction_lrnd)+1;
 % text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf)))
 % set(gca,'ylim',[min(subtraction)-2 maxY+2], 'FontSize',12)
 %% plot the colors
@@ -1634,25 +1113,21 @@ FOIsHigh = zeros(size(subtraction_lrnd)); FOIsHigh(foiHigh) = subtraction_lrnd(f
 bar(FOIsHigh, 'k')
 title('certain - uncertain condition')
 legend({'Other';'Low';'High'})
-% set(gca,'ylim',[minY maxY], 'FontSize',12)
+set(gca,'ylim',[-35 35], 'FontSize',12)
 
 %% random high
 subplot(3,1,3);
-avgRnd = (lowrnd+highrnd)/2;
-avgRand = subtraction_lrnd;
+avgRnd = (mean( squeeze(cat(3,allSnrE{:,3})), 2)+mean( squeeze(cat(3,allSnrE{:,4})), 2))/2;
 bar(avgRnd);
 maxY = max(avgRnd)+1;
 % text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf)))
-% set(gca,'ylim',[min(avgRnd) maxY+2], 'FontSize',12)
+set(gca,'ylim',[min(avgRnd) maxY+2], 'FontSize',12)
 %  title(strrep(event{comp2}, '_',' '))
 title('RANDOM')
 pause()
 end
 %% both on the same
-% for subi = 1:23
 % collatz = [30, 15, 46, 23, 70, 35, 106, 53, 160, 80, 40, 20, 10, 5, 16, 8, 4, 2, 1]
-figure(1)
-
 comp1 = 1; 
 maxF = 40;
 
@@ -1663,38 +1138,19 @@ imfCol = [0 .7 0];
 colPins = [0 0 0];
 
 figN = 1;
-% figure(figN)
+figure(figN)
 foiLow = [4:4:maxF];  
 foiHigh = [15:15:maxF];
 
 % higher frequency
+figure(1)
 subplot(2,1,1); hold on
-% highDat = squeeze(cat(3,allSnrE{:,comp1})); highDat = highDat(1:maxF,:);
-% randoDat = (squeeze(cat(3,allSnrE{:,3}))+squeeze(cat(3,allSnrE{:,4}))) / 2; randoDat = randoDat(1:maxF,:);
-
-lowDat = mean(modifZdat(nFrex+1:nFrex*2,:),2);
-
-highDat = mean(modifZdat(1:nFrex,:),2);
-highrnd = mean(modifZdat(nFrex*2+1:nFrex*3,:),2);
-lowrnd = mean(modifZdat(nFrex*3+1:nFrex*4,:),2);
-
-randoDat = (lowrnd+highrnd)/2;
+hold on
+highDat = squeeze(cat(3,allSnrE{:,comp1})); highDat = highDat(1:maxF,:);
+randoDat = (squeeze(cat(3,allSnrE{:,3}))+squeeze(cat(3,allSnrE{:,4}))) / 2; randoDat = randoDat(1:maxF,:);
 % randoDat = squeeze(cat(3,allSnrE{:,comp1+1})); randoDat = randoDat(1:maxF,:);
 
-subtraction_hrnd = mean( highDat, 2) - mean(lowDat, 2); % these names are wrong!!!
-
-% median
-% % highDat = median(modifZdat(1:nFrex,:),2);
-% % highrnd = median(modifZdat(nFrex*2+1:nFrex*3,:),2);
-% % lowrnd = median(modifZdat(nFrex*3+1:nFrex*4,:),2);
-% % 
-% % 
-% % randoDat = (lowrnd+highrnd)/2;
-% % % randoDat = squeeze(cat(3,allSnrE{:,comp1+1})); randoDat = randoDat(1:maxF,:);
-% % 
-% % subtraction_hrnd = median( highDat, 2) - median(randoDat, 2);
-
-
+subtraction_hrnd = mean( highDat, 2) - mean(randoDat, 2);
 
 bar(subtraction_hrnd, 'FaceColor', colPins);
 imf = [11, 19, 22, 27, 38, 41];
@@ -1723,21 +1179,13 @@ legend({'Other';'Low';'High';'Imf'})
 
 % bar(FOIsHigh(2:60), 'g')
 % title([strrep(event{comp1}, '_',' '), ' - ',strrep(event{comp1+1}, '_',' ')])
-% % title('Attending high')
+title('Attending high')
 
 % 
 % err
 % mDat = mean( highDat, 2) - mean(randoDat, 2); 
 % 
-% % highDat = mean(modifZdat(1:nFrex,:),2);
-% % highrnd = mean(modifZdat(nFrex*2+1:nFrex*3,:),2);
-% % lowrnd = mean(modifZdat(nFrex*3+1:nFrex*4,:),2);
-% % 
-% % randoDat = (lowrnd+highrnd)/2;
-% 
-% scaledStd = (std(bsxfun(@minus, modifZdat(1:nFrex,:), randoDat),0,2)./ sqrt(22) )  * 1.96;
-% 
-% % scaledStd = ( std( highDat - randoDat  ,0,2) ./ sqrt(22) )  * 1.96;
+% scaledStd = ( std( highDat - randoDat  ,0,2) ./ sqrt(22) )  * 1.96;
 % errHigh = mDat + scaledStd;
 % errLow = mDat - scaledStd;
 % %
@@ -1747,26 +1195,21 @@ legend({'Other';'Low';'High';'Imf'})
 %     plot([pli pli] ,[errHigh(pli) errLow(pli)], '-','LineWidth',ls, 'Color', 'k') % horizontal
 %     plot([pli-k pli+k] ,[errLow(pli) errLow(pli)], '-','LineWidth',ls, 'Color', 'k') % lower vertical
 % end
-% set(gca,'ylim',[floor(min(errLow))-5 ceil(max(errHigh))+5], 'FontSize',12)
-% % set(gca,'ylim',[-0.3 0.3], 'FontSize',12)
-
-
 % % 
-%%
-% set(gca,'ylim',[-5 30], 'FontSize',12)
+%  set(gca,'ylim',[floor(min(errLow)) ceil(max(errHigh))+1], 'FontSize',12)
+%%% set(gca,'ylim',[-3 3], 'FontSize',12)
+
 %%%set(gca,'xlim',[1 40], 'FontSize',12)
-ylabel('SNR'); xlabel('Frequency', 'FontSize',12)  % Modified z-scores
-hold off
+ylabel('SNR'); xlabel('Frequency')  
+
+
 %% high_rnd - low_rnd
-% lowDat = squeeze(cat(3,allSnrE{:,2})); lowDat = lowDat(1:maxF,:);
-lowDat = mean(modifZdat(nFrex+1:nFrex*2,:),2);
+lowDat = squeeze(cat(3,allSnrE{:,2})); lowDat = lowDat(1:maxF,:);
+% 
+% subtraction_rnd = mean( highDat, 2) - mean(randoDat, 2);
 
-subtraction_lrnd = highrnd-lowrnd;%  mean( lowDat, 2)- mean( randoDat, 2); % these names are wrong
 
-%median
-% % lowDat = median(modifZdat(nFrex+1:nFrex*2,:),2);
-% % 
-% % subtraction_lrnd = median( lowDat, 2)- median( randoDat, 2);
+subtraction_lrnd = mean( lowDat, 2)- mean( randoDat, 2);
 
 subplot(2,1,2); hold on
 bar(subtraction_lrnd, 'FaceColor', colPins);
@@ -1798,9 +1241,8 @@ bar(FOIsImf, 'FaceColor', imfCol)
 % err
 % mDat = mean( lowDat, 2) - mean(randoDat, 2); 
 % 
-% scaledStd = (std(bsxfun(@minus, modifZdat(nFrex+1:nFrex*2,:), randoDat),0,2)./ sqrt(22) )  * 1.96;
 % 
-% % scaledStd = ( std( lowDat - randoDat  ,0,2) ./ sqrt(22) )  * 1.96;
+% scaledStd = ( std( lowDat - randoDat  ,0,2) ./ sqrt(22) )  * 1.96;
 % errHigh = mDat + scaledStd;
 % errLow = mDat - scaledStd;
 % 
@@ -1810,63 +1252,36 @@ bar(FOIsImf, 'FaceColor', imfCol)
 %     plot([pli pli] ,[errHigh(pli) errLow(pli)], '-','LineWidth',ls, 'Color', 'k') % horizontal
 %     plot([pli-k pli+k] ,[errLow(pli) errLow(pli)], '-','LineWidth',ls, 'Color', 'k') % lower vertical
 % end
-% set(gca,'ylim',[floor(min(errLow))-5 ceil(max(errHigh))+5], 'FontSize',12)
-% 
-% 
-% %%%set(gca,'xlim',[1 40], 'FontSize',12)
-% % set(gca,'ylim',[-30 15], 'FontSize',12)
-% 
-ylabel('SNR'); xlabel('Frequency', 'FontSize',12)  
-% title('Attending low')
+% set(gca,'ylim',[floor(min(errLow)) ceil(max(errHigh))+1], 'FontSize',12)
+
+
+%%%set(gca,'xlim',[1 40], 'FontSize',12)
+%%%set(gca,'ylim',[-3 3], 'FontSize',12)
+
+ylabel('SNR'); xlabel('Frequency')  
+title('Attending low')
 % title([strrep(event{comp1+2}, '_',' '), ' - ',strrep(event{comp1+3}, '_',' ')])
-% % set(gca,'ylim',[-0.3 0.3], 'FontSize',12)
-hold off
-pause()
-end
 %%
-
-%prelim stat
-
-% juku1 = bsxfun(@minus, modifZdat(1:nFrex,:), randoDat);
-juku = bsxfun(@minus, modifZdat(nFrex+1:nFrex*2,:), randoDat);
-
-% hist(modifZdat(8, :))
+% figure(2)
+% subtraction = highDat - lowDat;
+% bar(subtraction)
 % 
-% raw
-% highrndraw = mean(datStandard(nFrex*2+1:nFrex*3,:),2);
-% lowrndraw = mean(datStandard(nFrex*3+1:nFrex*4,:),2);
-% randoDatRaw = (lowrndraw+highrndraw)/2;
-% juku = bsxfun(@minus, datStandard(nFrex+1:nFrex*2,:), randoDatRaw);
+
+highDat = squeeze(cat(3,allSnrE{:,comp1})); highDat = highDat(1:maxF,:);
+randoLow = squeeze(cat(3,allSnrE{:,3})); randoLow = randoLow(1:maxF,:);
+randoHigh = squeeze(cat(3,allSnrE{:,4})); randoHigh = randoHigh(1:maxF,:);
+x = 1:length(highDat);
+
+figure()
+hold
+stem(x-0.2, mean(highDat,2), '-o', 'Color', 'b')
+stem(x, mean(lowDat,2), '-o', 'Color', 'r')
+stem(x+0.2, mean(randoLow,2), '-o', 'Color', 'k')
+stem(x+0.4,mean(randoHigh,2), '-o', 'Color', 'k')
+
+legend({'Cued High';'Cued Low'; 'Non-Cued (Low)';'Non-Cued (High)'})
 
 
-
-% highDat(30)*sqrt(23)/std(juku(30, :))
-
-frex2comp = 30;
-data1 = (juku(frex2comp-1,:)+juku(frex2comp+1,:))/2;
-% data1 = juku1(frex2comp,:);
-data2 = juku(frex2comp,:);
-
-figure(2), clf, hold on
-
-colors = 'kr';
-N=max(size(data1));
-for i=1:N
-    plot([data1(i) data2(i)],[i i],colors((data1(i)<data2(i))+1),'HandleVisibility','off')
-end
-
-
-
-plot(data1,1:N,'ks','markerfacecolor','k','markersize',10)
-plot(data2,1:N,'ro','markerfacecolor','r','markersize',10)
-
-% set(gca,'ylim',[0 N+1],'xlim',[-.5 max([data2])+.5],'xtick',0:5)
-ylabel('Data index'), xlabel('Data value')
-% grid minor
-legend({'data1';'data2'})
-
-[p,h,stats] = signrank(data1,data2)
-title([ 'Wilcoxon z=' num2str(stats.zval) ', p=' num2str(p) ])
 end
 
 %% PALAMEDES

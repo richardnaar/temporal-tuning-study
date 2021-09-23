@@ -190,10 +190,8 @@ while do.montage
 
 doRess = 1;
 do_p_struct = 0;
-doSingleTrial = 1;
+doSingleTrial = 0;
 plotPlinks = 0;
-findBlinks = 0;
-stimLocked = 0; % stim locked events allow to preserve data near the stim event
 
 if do_p_struct; doRess = 1; doSingleTrial = 1; doAvgAmp = 1; doAvgSNR = 1; end
 %% some electrode sets
@@ -254,27 +252,28 @@ minphase = false; % defalut
 % eegplot(EEG.data, 'events', EEG.event) % see the raw file
 
 %% extracting the blink structure
-if findBlinks
-    blinkList = dir([dataDir 'blinks\', '*.mat']); 
-    % load([dataDir 'blinks\' blinkList(end).name])
-    % fprintf('loading dataset: %s', blinkList(end).name); fprintf('\n') 
+% 
+blinkList = dir([dataDir 'blinks\', '*.mat']); 
+% load([dataDir 'blinks\' blinkList(end).name])
+% fprintf('loading dataset: %s', blinkList(end).name); fprintf('\n') 
 
-    bFileCounter = 0; fileNotFound = 1;
-    while fileNotFound
-    bFileCounter = bFileCounter + 1;
-        if strcmp( blinkList( bFileCounter ).name(1:7) , implistM(subi).name(1:7) ) ~= 1 && bFileCounter <= length(blinkList)
-            % do nothing
-        elseif strcmp( blinkList(bFileCounter).name(1:7) , implistM(subi).name(1:7) ) == 1
-            load([dataDir 'blinks\' blinkList(bFileCounter).name])
-            fprintf('loading dataset: %s', blinkList(bFileCounter).name); fprintf('\n') 
-            fileNotFound = 0;
-        else
-            fprintf('Blinker file not found')
-        end
+bFileCounter = 0; fileNotFound = 1;
+while fileNotFound
+bFileCounter = bFileCounter + 1;
+    if strcmp( blinkList( bFileCounter ).name(1:7) , implistM(subi).name(1:7) ) ~= 1 && bFileCounter <= length(blinkList)
+        % do nothing
+    elseif strcmp( blinkList(bFileCounter).name(1:7) , implistM(subi).name(1:7) ) == 1
+        load([dataDir 'blinks\' blinkList(bFileCounter).name])
+        fprintf('loading dataset: %s', blinkList(bFileCounter).name); fprintf('\n') 
+        fileNotFound = 0;
+    else
+        fprintf('Blinker file not found')
     end
 end
+
 %% epoch parameters
 
+stimLocked = 1; % stim locked events allow to preserve data near the stim event
 
 if stimLocked == 1
     event = {'STIM_HIGH' 'STIM_LOW' 'STIM_RND_H' 'STIM_RND_L'}; 
@@ -419,7 +418,7 @@ subtrMean = bsxfun(@minus, allSamples, mean(allSamples,2)); %
 zscored = bsxfun(@rdivide, subtrMean, std(allSamples,0,2)); % 
 
 %%
-if plotPlinks && findBlinks
+if plotPlinks
     figure(1)
     subplot(2,1,1)
     plot(allSamples')
@@ -427,7 +426,7 @@ if plotPlinks && findBlinks
 end
 
 %% find and draw blinks for this trial
-if findBlinks 
+ 
 startSampleInSeconds = startSample/srate;
 endSampleInSeconds = endSample/srate;
 
@@ -495,9 +494,7 @@ end
 % txt = find(notblinks == 0)
 
 end
-
-end
-if plotPlinks && findBlinks; hold off; end
+if plotPlinks; hold off; end
 
 %% extract some data
 if isempty(rt)
@@ -526,10 +523,6 @@ correctPsychoTrials(thisCueEvent+fromTrial) = str2num(isCorrect{:});
 goBack = 0;
 %[~, goBack] = findManual(rebinnedData, manualCheck, trialDur/EEG.srate, escapeKey, 2);
 % notblinks is a vector where 0 indicates a blink
-
-if findBlinks == 0
-    notblinks = 1:size(rebinnedData,2);
-end
 
 if sum(notblinks) ~= 0 % If there is at least one segment without a blink
     rebinnedData = rebinnedData(:,find(notblinks));
@@ -563,10 +556,7 @@ grandAverage{subi, eventIndx} = mean(meanComplexFFT(:,find(tIndex)),2); % Averag
 if ~isempty(meanComplexFFT) && doSingleTrial
     allTheSingleTrials{subi, eventIndx} =  abs(meanComplexFFT(1:60,find(tIndex)) ).^2; % Here we lose coherence.
 end
-
-if findBlinks
-    allBlinks{subi, eventIndx} = thisEventBlinks;
-end
+allBlinks{subi, eventIndx} = thisEventBlinks;
 
 if do_p_struct
     % for the p
@@ -629,7 +619,7 @@ end % next subject
 % save data ressData
 if stimLocked == 1
     save([dataDir date '-TFUR-SNRs-OC-stimLocked.mat'], 'allSnrE', '-v7.3');
-    if doSingleTrial; save([dataDir date '-TFUR-amp-OC-stimLocked.mat'], 'allTheSingleTrials', '-v7.3'); end
+    save([dataDir date '-TFUR-amp-OC-stimLocked.mat'], 'allTheSingleTrials', '-v7.3');
     save([dataDir date '-TFUR-grandAverage-OC-stimLocked.mat'], 'grandAverage', '-v7.3');
 else
     save([dataDir date '-TFUR-SNRs-perdLocked-OC.mat'], 'allSnrE', '-v7.3');
@@ -1516,8 +1506,7 @@ elseif analyseAmp2
     
 %     nFrex = size([allSnrE{1,1}],2); %nFrex = size([allSnrE{1,1}],1);
     nFrex = 43; %nFrex = size([allSnrE{1,1}],1);
-    
-%     hz = abs(grandAverage{subi, eventIndx}(2:44)).^2;
+
       
     datStandard = [];
     for condi = 1:4% size(allSnrE,2)
