@@ -1,4 +1,4 @@
-%%  EEG at York prelim (15.09.21) %% NB! Do STIM OFF
+%%  EEG at York prelim (13.09.21) %% NB! Do STIM OFF
 clc; close all; clear all; 
 
 %% 
@@ -193,7 +193,7 @@ do_p_struct = 0;
 doSingleTrial = 1;
 plotPlinks = 0;
 findBlinks = 0;
-stimLocked = 0; % stim locked events allow to preserve data near the stim event
+stimLocked = 1; % stim locked events allow to preserve data near the stim event
 
 if do_p_struct; doRess = 1; doSingleTrial = 1; doAvgAmp = 1; doAvgSNR = 1; end
 %% some electrode sets
@@ -1507,12 +1507,12 @@ if analyzeAmp
 
 elseif analyseAmp2
 
-    dati = 42;% 16; %20; 
-    allSnrE = grandAverage;
+    dati = 49;% 16; %20; 
     
     load([dataDir, implistSNR(dati).name]); % load data
     fprintf('loading participant: %s \n', implistSNR(dati).name);
     
+    allSnrE = grandAverage;
     
 %     nFrex = size([allSnrE{1,1}],2); %nFrex = size([allSnrE{1,1}],1);
     nFrex = 43; %nFrex = size([allSnrE{1,1}],1);
@@ -1521,7 +1521,8 @@ elseif analyseAmp2
       
     datStandard = [];
     for condi = 1:4% size(allSnrE,2)
-        datn = squeeze(cat(3,allSnrE{:,condi}(1:10)));
+        datn = squeeze(cat(3,allSnrE{:,condi}));
+        datn = datn(2:nFrex+1, :); % excluding 0 Hz
         datStandard = [datStandard; datn];
     end
     
