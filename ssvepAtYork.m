@@ -1,4 +1,4 @@
-%%  EEG at York prelim (13.09.21) %% NB! Do STIM OFF
+%%  EEG at York prelim (19.09.21) %% NB! Do STIM OFF
 clc; close all; clear all; 
 
 %% 
@@ -193,7 +193,7 @@ do_p_struct = 0;
 doSingleTrial = 1;
 plotPlinks = 0;
 findBlinks = 0;
-stimLocked = 1; % stim locked events allow to preserve data near the stim event
+stimLocked = 0; % stim locked events allow to preserve data near the stim event
 
 if do_p_struct; doRess = 1; doSingleTrial = 1; doAvgAmp = 1; doAvgSNR = 1; end
 %% some electrode sets
@@ -205,14 +205,15 @@ if do_p_struct; doRess = 1; doSingleTrial = 1; doAvgAmp = 1; doAvgSNR = 1; end
 % left_temporal = {'FT7', 'T7', 'TP7', 'TP9'};
 %right_temporal = {'FT8', 'T8', 'TP8', 'TP10'};
 % left_parieto_occipital = {'P1', 'P3', 'P5', 'P7', 'PO3', 'PO7', 'O1'};
-% left_parieto_occipital = {'P2', 'P4', 'P6', 'P8', 'PO4', 'PO8', 'O2'};
+% right_parieto_occipital = {'P2', 'P4', 'P6', 'P8', 'PO4', 'PO8', 'O2'};
 % fronto_central = {'Fpz', 'Fz'};
 % central = {'FCz', 'Cz', 'CPz'}; 
 occipito_central = {'Pz', 'POz', 'Oz', 'O1', 'O2'}; 
 % occipito_central2 = {'Pz', 'POz', 'Oz', 'O1', 'O2'}; 
 % right_fronto_temporal = {'FT8', 'T8', 'TP8', 'TP10'}; 
-
-current_set = occipito_central;
+mt_left = {'P5', 'P7', 'PO7'}; % BA 19, 37 39
+mt_right = {'P6', 'P8', 'PO4'};
+current_set = mt_right;
 
 %% loop through all the datasets in implistM (pre-processed data) one by one
 manualCheck = 0; % check manually for artefacts
@@ -628,18 +629,18 @@ end % next subject
 
 % save data ressData
 if stimLocked == 1
-    save([dataDir date '-TFUR-SNRs-OC-stimLocked.mat'], 'allSnrE', '-v7.3');
-    if doSingleTrial; save([dataDir date '-TFUR-amp-OC-stimLocked.mat'], 'allTheSingleTrials', '-v7.3'); end
-    save([dataDir date '-TFUR-grandAverage-OC-stimLocked.mat'], 'grandAverage', '-v7.3');
+    save([dataDir date '-TFUR-SNRs-right-stimLocked.mat'], 'allSnrE', '-v7.3');
+    if doSingleTrial; save([dataDir date '-TFUR-amp-right-stimLocked.mat'], 'allTheSingleTrials', '-v7.3'); end
+    save([dataDir date '-TFUR-grandAverage-right-stimLocked.mat'], 'grandAverage', '-v7.3');
 else
-    save([dataDir date '-TFUR-SNRs-perdLocked-OC.mat'], 'allSnrE', '-v7.3');
-%     save([dataDir date '-TFUR-SNRs-perdLocked-OC.mat'], 'allSnrE', '-v7.3');
-    if doSingleTrial; save([dataDir date '-TFUR-amp-OC.mat'], 'allTheSingleTrials', '-v7.3'); end
+    save([dataDir date '-TFUR-SNRs-cueLocked-right.mat'], 'allSnrE', '-v7.3');
+    save([dataDir date '-TFUR-grandAverage-cueLocked-right.mat'], 'grandAverage', '-v7.3');
+    if doSingleTrial; save([dataDir date '-TFUR-amp-cueLocked-right.mat'], 'allTheSingleTrials', '-v7.3'); end
 end
 
 if doRess
-    save([dataDir date '-TFUR-ressAllSegments-stim-OC.mat'], 'ressAllSegments', '-v7.3');
-    save([dataDir date '-TFUR-ressAllTrials-stim-OC.mat'], 'ressAllTrials', '-v7.3');
+    save([dataDir date '-TFUR-ressAllSegments-cueLocked-right.mat'], 'ressAllSegments', '-v7.3');
+    save([dataDir date '-TFUR-ressAllTrials-cueLocked-right.mat'], 'ressAllTrials', '-v7.3');
 end
 
 if do_p_struct
@@ -1010,9 +1011,6 @@ save([dataDir date '-TFUR-amp-electStruct.mat'], 'elecStruct', '-v7.3');
 
 do.singleElectrodes = 0;
 end
-
-
-
 
 %% blinkStructure
 % indiDir = 'C:\Users\Richard Naar\Documents\dok\ssvep\Visit to York\EEG data\individual\'; % data after epoching and artefact inspection
@@ -1505,9 +1503,9 @@ if analyzeAmp
                                 mean(allTheSingleTrials{subi,4}(2:end,:),2)];
     end
 
-elseif analyseAmp2
+elseif analyseAmp2 % single trials
 
-    dati = 49;% 16; %20; 
+    dati = 16;%STIM: 28; 5; 6; %CUE: 15;% 16; %17; TFUR-grandAverage-OC-stimLocked
     
     load([dataDir, implistSNR(dati).name]); % load data
     fprintf('loading participant: %s \n', implistSNR(dati).name);
@@ -1548,27 +1546,27 @@ modifZdat = datStandard;
 % medianCentered = .6745.*bsxfun(@minus,datStandard,median(datStandard));
 % modifZdat = bsxfun(@rdivide, medianCentered, median(abs(medianCentered)));
 
-
-for histi = 1:23
-    hist(datStandard(:,histi))
-    pause()
-end
-
-for subi = 1:23
-    
-    first = modifZdat(1:nFrex,subi);
-    second = modifZdat(nFrex+1:nFrex*2,subi);
-    third = modifZdat(nFrex*2+1:nFrex*3,subi);
-    fourth = modifZdat(nFrex*3+1:nFrex*4,subi);
-
-    bar(first)
-    hold
-    bar(second,'g')
-    bar(third,'r')
-    bar(fourth,'k')
-    hold off
-    pause()
-end
+% 
+% for histi = 1:23
+%     hist(datStandard(:,histi))
+%     pause()
+% end
+% 
+% for subi = 1:23
+%     
+%     first = modifZdat(1:nFrex,subi);
+%     second = modifZdat(nFrex+1:nFrex*2,subi);
+%     third = modifZdat(nFrex*2+1:nFrex*3,subi);
+%     fourth = modifZdat(nFrex*3+1:nFrex*4,subi);
+% 
+%     bar(first)
+%     hold
+%     bar(second,'g')
+%     bar(third,'r')
+%     bar(fourth,'k')
+%     hold off
+%     pause()
+% end
 
 for frex = 1:2
 comp1 = frex;  
@@ -1584,9 +1582,9 @@ subplot(3,1,1); hold on
 % bar(mean( squeeze(cat(3,allSnrE{:,comp1})), 2));
 
 if comp1 == 1
-    predDat = mean(modifZdat(1:nFrex,:),2);
+    predDat = abs(mean(modifZdat(1:nFrex,:),2)).^2; % high 
 else
-    predDat = mean(modifZdat(nFrex+1:nFrex*2,:),2);
+    predDat = abs(mean(modifZdat(nFrex+1:nFrex*2,:),2)).^2; % low
 end
     
 bar(predDat)
@@ -1653,7 +1651,7 @@ end
 % for subi = 1:23
 % collatz = [30, 15, 46, 23, 70, 35, 106, 53, 160, 80, 40, 20, 10, 5, 16, 8, 4, 2, 1]
 figure(1)
-
+leg = 0;
 comp1 = 1; 
 maxF = 40;
 
@@ -1669,20 +1667,25 @@ foiLow = [4:4:maxF];
 foiHigh = [15:15:maxF];
 
 % higher frequency
-subplot(2,1,1); hold on
+% subplot(2,1,1); 
+hold on
 % highDat = squeeze(cat(3,allSnrE{:,comp1})); highDat = highDat(1:maxF,:);
 % randoDat = (squeeze(cat(3,allSnrE{:,3}))+squeeze(cat(3,allSnrE{:,4}))) / 2; randoDat = randoDat(1:maxF,:);
 
-lowDat = mean(modifZdat(nFrex+1:nFrex*2,:),2);
+% lowDat = abs(mean(modifZdat(nFrex+1:nFrex*2,:),2)).^2;
+% highDat = abs(mean(modifZdat(1:nFrex,:),2)).^2;
 
-highDat = mean(modifZdat(1:nFrex,:),2);
-highrnd = mean(modifZdat(nFrex*2+1:nFrex*3,:),2);
-lowrnd = mean(modifZdat(nFrex*3+1:nFrex*4,:),2);
 
-randoDat = (lowrnd+highrnd)/2;
+highDat = abs(modifZdat(1:nFrex,:)).^2; highDat = highDat/1000; % convert to mV
+lowDat = abs(modifZdat(nFrex+1:nFrex*2,:)).^2; lowDat = lowDat/1000; % convert to mV
+
+% highrnd = abs(mean(modifZdat(nFrex*2+1:nFrex*3,:),2)).^2;
+% lowrnd = abs(mean(modifZdat(nFrex*3+1:nFrex*4,:),2)).^2;
+
+% randoDat = (lowrnd+highrnd)/2;
 % randoDat = squeeze(cat(3,allSnrE{:,comp1+1})); randoDat = randoDat(1:maxF,:);
 
-subtraction_hrnd = mean( highDat, 2) - mean(lowDat, 2); % these names are wrong!!!
+subtraction_hl = mean( highDat, 2) - mean(lowDat, 2);
 
 % median
 % % highDat = median(modifZdat(1:nFrex,:),2);
@@ -1697,7 +1700,7 @@ subtraction_hrnd = mean( highDat, 2) - mean(lowDat, 2); % these names are wrong!
 
 
 
-bar(subtraction_hrnd, 'FaceColor', colPins);
+bar(subtraction_hl, 'FaceColor', colPins);
 imf = [11, 19, 22, 27, 38, 41];
 imf = imf(find(imf < maxF));
 
@@ -1706,25 +1709,25 @@ imf = imf(find(imf < maxF));
 % text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf))) % *mean(EEG.data(31,:))
 
 %% plot the colors
-% color low
+% color low - high
 
-FOIsLow = zeros(size(subtraction_hrnd)); FOIsLow(foiLow) = subtraction_hrnd(foiLow);
+FOIsLow = zeros(size(subtraction_hl)); FOIsLow(foiLow) = subtraction_hl(foiLow);
 bar(FOIsLow, 'FaceColor', colLow)
 
 % color high
-FOIsHigh = zeros(size(subtraction_hrnd)); FOIsHigh(foiHigh) = subtraction_hrnd(foiHigh);
+FOIsHigh = zeros(size(subtraction_hl)); FOIsHigh(foiHigh) = subtraction_hl(foiHigh);
 bar(FOIsHigh, 'FaceColor', colHigh)
 % title([strrep(event{comp1+2}, '_',' '), ' - ',strrep(event{comp1+3}, '_',' ')])
 
 % color imf 
-FOIsImf = zeros(size(subtraction_hrnd)); FOIsImf(imf) = subtraction_hrnd(imf);
+FOIsImf = zeros(size(subtraction_hl)); FOIsImf(imf) = subtraction_hl(imf);
 bar(FOIsImf, 'FaceColor', imfCol)
 
-legend({'Other';'Low';'High';'Imf'})
+if leg; legend({'Other';'Low';'High';'Imf'}); end
 
 % bar(FOIsHigh(2:60), 'g')
 % title([strrep(event{comp1}, '_',' '), ' - ',strrep(event{comp1+1}, '_',' ')])
-% % title('Attending high')
+% title('High-Low')
 
 % 
 % err
@@ -1749,41 +1752,114 @@ legend({'Other';'Low';'High';'Imf'})
 %     plot([pli-k pli+k] ,[errLow(pli) errLow(pli)], '-','LineWidth',ls, 'Color', 'k') % lower vertical
 % end
 % set(gca,'ylim',[floor(min(errLow))-5 ceil(max(errHigh))+5], 'FontSize',12)
-% % set(gca,'ylim',[-0.3 0.3], 'FontSize',12)
+set(gca,'ylim',[-5 30])
+
+%% 
+subtr = highDat - lowDat;
+N = 23;
+err = std(subtr')./sqrt(N);
+
+errorb(1:43,subtraction_hl,err,'top')
 
 
 % % 
 %%
 % set(gca,'ylim',[-5 30], 'FontSize',12)
 %%%set(gca,'xlim',[1 40], 'FontSize',12)
-ylabel('SNR'); xlabel('Frequency', 'FontSize',12)  % Modified z-scores
-hold off
-%% high_rnd - low_rnd
-% lowDat = squeeze(cat(3,allSnrE{:,2})); lowDat = lowDat(1:maxF,:);
-lowDat = mean(modifZdat(nFrex+1:nFrex*2,:),2);
+ylabel('Amplitude (mV)'); xlabel('Frequency')  % Modified z-scores
+set(findall(gcf,'-property','FontSize'),'FontSize',14)
+set(findall(gcf,'-property','fontname'),'fontname', 'Arial')
 
-subtraction_lrnd = highrnd-lowrnd;%  mean( lowDat, 2)- mean( randoDat, 2); % these names are wrong
+
+%% sig
+% 
+labdat = subtraction_hl+err';
+sigf = [30];
+% text(sigf-0.15, labdat(sigf)+1, '*', 'fontsize',12)    
+text(sigf-1, labdat(sigf)+1, 'p = .052', 'fontsize',12)    
+
+
+hold off
+
+
+%% small plot
+
+
+fs = 29:31;
+% fs = 7:9;
+figure(2)
+hold on
+bar(fs, subtraction_hl(fs), 'FaceColor', colPins);
+bar(fs, FOIsImf(fs), 'FaceColor', imfCol)
+bar(fs, FOIsHigh(fs), 'FaceColor', colHigh)
+bar(fs, FOIsLow(fs), 'FaceColor', colLow)
+
+errorb(fs, subtraction_hl(fs),err(fs),'top')
+
+ylabel('Amplitude (mV)'); xlabel('Frequency')  % Modified z-scores
+title('L')
+set(findall(gcf,'-property','FontSize'),'FontSize',14)
+set(findall(gcf,'-property','fontname'),'fontname', 'Arial')
+
+% % sig
+% labdat = subtraction_hl(fs)+err(fs)';
+% sigf = [2];
+% text(fs(sigf)-0.1, labdat(sigf)+0.2, '*', 'fontsize',18)    
+% text(fs(sigf)-0.3, labdat(sigf)+0.5, 'p = 0.052', 'fontsize',10)    
+
+
+x0=500;
+y0=200;
+width=300;
+height=250;
+set(gcf,'position',[x0,y0,width,height])
+% cue
+% set(gca,'ylim',[-1.5 3])
+% set(gca,'ylim',[-3 6])
+
+% stim
+% set(gca,'ylim',[-2.5 5])
+set(gca,'ylim',[-0.75 2])
+%% AVG RND
+% lowDat = squeeze(cat(3,allSnrE{:,2})); lowDat = lowDat(1:maxF,:);
+% lowDat = abs(mean(modifZdat(nFrex+1:nFrex*2,:),2)).^2;
+
+% lowrnd = abs(mean(modifZdat(nFrex*3+1:nFrex*4,:),2)).^2;
+% highrnd = abs(mean(modifZdat(nFrex*2+1:nFrex*3,:),2)).^2;
+
+lowrnd = modifZdat(nFrex*3+1:nFrex*4,:);
+highrnd = modifZdat(nFrex*2+1:nFrex*3,:);
+
+rnd = abs((lowrnd + highrnd)/2).^2;
+rnd = rnd/1000; % convert to mV
+
+% lowrnd = abs(modifZdat(nFrex*3+1:nFrex*4,:)).^2;
+% highrnd = abs(modifZdat(nFrex*2+1:nFrex*3,:)).^2;
+
+rnds = mean(rnd,2);%  mean( lowDat, 2)- mean( randoDat, 2); % these names are wrong
 
 %median
 % % lowDat = median(modifZdat(nFrex+1:nFrex*2,:),2);
 % % 
 % % subtraction_lrnd = median( lowDat, 2)- median( randoDat, 2);
 
-subplot(2,1,2); hold on
-bar(subtraction_lrnd, 'FaceColor', colPins);
-maxY = max(subtraction_lrnd)+1;
+% subplot(2,1,2); 
+hold on
+bar(rnds, 'FaceColor', colPins);
+
+maxY = max(rnds)+1;
 % text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf)))
 % set(gca,'ylim',[min(subtraction)-2 maxY+2], 'FontSize',12)
 %% plot the colors
 % color low
 
-FOIsLow = zeros(size(subtraction_lrnd)); FOIsLow(foiLow) = subtraction_lrnd(foiLow);
+FOIsLow = zeros(size(rnds)); FOIsLow(foiLow) = rnds(foiLow);
 
 bar(FOIsLow, 'FaceColor', colLow)
 
 
 % color high
-FOIsHigh = zeros(size(subtraction_lrnd)); FOIsHigh(foiHigh) = subtraction_lrnd(foiHigh);
+FOIsHigh = zeros(size(rnds)); FOIsHigh(foiHigh) = rnds(foiHigh);
 bar(FOIsHigh, 'FaceColor', colHigh)
 
 % imfTxt = [{'F2 - F1'},{'F1 + F2'},{'(2*F2) - (2*F1)'},{'3*F1 + F2'},{'(F1 + F2)*2'}, {'3*F2 - F1'}];
@@ -1791,7 +1867,7 @@ bar(FOIsHigh, 'FaceColor', colHigh)
 % text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf))) % *mean(EEG.data(31,:))
 
 % color imf 
-FOIsImf = zeros(size(subtraction_lrnd)); FOIsImf(imf) = subtraction_lrnd(imf);
+FOIsImf = zeros(size(rnds)); FOIsImf(imf) = rnds(imf);
 bar(FOIsImf, 'FaceColor', imfCol)
 
 % legend({'Other';'Low';'High';'Imf'})
@@ -1817,19 +1893,85 @@ bar(FOIsImf, 'FaceColor', imfCol)
 % %%%set(gca,'xlim',[1 40], 'FontSize',12)
 % % set(gca,'ylim',[-30 15], 'FontSize',12)
 % 
-ylabel('SNR'); xlabel('Frequency', 'FontSize',12)  
+ylabel('Amplitude (mV)', 'FontSize',14); xlabel('Frequency')  
 % title('Attending low')
 % title([strrep(event{comp1+2}, '_',' '), ' - ',strrep(event{comp1+3}, '_',' ')])
-% % set(gca,'ylim',[-0.3 0.3], 'FontSize',12)
+set(gca,'ylim',[min(rnds)-(min(rnds)*0.1) max(rnds)+(max(rnds)*0.5)])
+
+set(findall(gcf,'-property','FontSize'),'FontSize',14)
+set(findall(gcf,'-property','fontname'),'fontname', 'Arial')
+% set(gca, 'fontname', 'Arial') % get(gca,'fontname') listfonts
+
+legend({'Other';'Low';'High';'Imf'})
+
+%% err
+
+
+
+N = 23;
+% err = 1.96 * (std(rnd')./sqrt(N));
+err = std(rnd')./sqrt(N);
+
+errorb(1:43,mean(rnd,2),err, 'top')
+
+
+%%
+% 
+% juku = mean(rnd,2)+err';
+% sigf = [8, 11, 19, 30]
+% text(sigf-0.15, juku(sigf)+1000, '*', 'fontsize',18)    
+
 hold off
-pause()
+
+%% small plot
+
+
+fs = 29:31;
+% fs = 7:9;
+figure(2)
+hold on
+bar(fs, rnds(fs), 'FaceColor', colPins);
+bar(fs, FOIsImf(fs), 'FaceColor', imfCol)
+bar(fs, FOIsHigh(fs), 'FaceColor', colHigh)
+bar(fs, FOIsLow(fs), 'FaceColor', colLow)
+
+errorb(fs, rnds(fs),err(fs),'top')
+
+ylabel('Amplitude (mV)'); xlabel('Frequency')  % Modified z-scores
+title('R')
+set(findall(gcf,'-property','FontSize'),'FontSize',14)
+set(findall(gcf,'-property','fontname'),'fontname', 'Arial')
+
+% % sig
+% labdat = rnds(fs)+err(fs)';
+% sigf = [2];
+% text(fs(sigf)-0.1, labdat(sigf)+1, '*', 'fontsize',18)    
+% text(fs(sigf)-0.3, labdat(sigf)+0.5, 'p = 0.052', 'fontsize',10)    
+
+
+x0=500;
+y0=200;
+width=300;
+height=250;
+set(gcf,'position',[x0,y0,width,height])
+% cue
+% set(gca,'ylim',[0 40])
+% set(gca,'ylim',[0 7])
+
+%%
+
+
+% pause()
 end
 %%
 
 %prelim stat
 
-% juku1 = bsxfun(@minus, modifZdat(1:nFrex,:), randoDat);
-juku = bsxfun(@minus, modifZdat(nFrex+1:nFrex*2,:), randoDat);
+juku = rnd;
+% juku = bsxfun(@minus, abs(modifZdat(1:nFrex,:)).^2, abs(modifZdat(nFrex+1:nFrex*2,:)).^2);
+% juku = bsxfun(@minus, highDat, lowDat);
+
+
 
 % hist(modifZdat(8, :))
 % 
@@ -1843,10 +1985,13 @@ juku = bsxfun(@minus, modifZdat(nFrex+1:nFrex*2,:), randoDat);
 
 % highDat(30)*sqrt(23)/std(juku(30, :))
 
-frex2comp = 30;
-data1 = (juku(frex2comp-1,:)+juku(frex2comp+1,:))/2;
-% data1 = juku1(frex2comp,:);
+frex2comp = 8;
+% data1 = (juku(frex2comp-1,:)+juku(frex2comp+1,:))/2;
+data1 = zeros(23,1);% juku(7,:);
 data2 = juku(frex2comp,:);
+% hist(data2)
+% [H, pValue, SWstatistic] = swtest(data2);
+% pValue
 
 figure(2), clf, hold on
 
@@ -1866,9 +2011,10 @@ ylabel('Data index'), xlabel('Data value')
 % grid minor
 legend({'data1';'data2'})
 
-[p,h,stats] = signrank(data1,data2)
+[p,h,stats] = signrank(data2);
+
 title([ 'Wilcoxon z=' num2str(stats.zval) ', p=' num2str(p) ])
-end
+% end
 
 %% PALAMEDES
 dataDir = 'C:\Users\Richard Naar\Documents\dok\ssvep\Visit to York\EEG data\';  % directory for datafiles
