@@ -70,13 +70,15 @@ for (ti in 1:length(allDat$trials_2.label)){
 
 }
 
+
 #allDat$label_2 <- ordered(allDat$label_2, levels = c("1...5", "6...10", "11...15","21...26","26...30", "35...65"))
 allDat$label_2 <- ordered(allDat$label_2, levels = c("1...5", "6...20", "21...35","36...50", "51...65"))
+#allDat$label_2 <- ordered(allDat$label_2, levels = c("1...5", "6...35", "36...65"))
 
 
 allDat$trials_2.label <- as.factor(allDat$trials_2.label)
 
-levels(allDat$trials_2.label)[levels(allDat$trials_2.label)=="high"] <- "Cued high"
+levels(allDat$trials_2.label)[levels(allDat$trials_2.label)=="high"] <- "Cued High"
 levels(allDat$trials_2.label)[levels(allDat$trials_2.label)=="low"] <- "Cued Low"
 levels(allDat$trials_2.label)[levels(allDat$trials_2.label)=="high50"] <- "Non-cued (high)"
 levels(allDat$trials_2.label)[levels(allDat$trials_2.label)=="low50"] <- "Non-cued (low)"
@@ -94,9 +96,9 @@ require(Rmisc)
 meanAccuracy <- summarySE(allDat, measurevar="trials_2.response", groupvars=c( "participant")) #
 
 
-# meanAllDat <- summarySE(allDat, measurevar="trials_2.intensity.z", groupvars=c("trials_2.label", "label_2")) #
-meanAllDat <- summarySE(allDat, measurevar="trials_2.intensity", groupvars=c("trials_2.label", "label_2")) #
-
+#meanAllDat <- summarySE(allDat, measurevar="trials_2.intensity.z", groupvars=c("trials_2.label", "label_2")) #
+meanAllDat <- summarySE(allDat, measurevar="increment", groupvars=c("trials_2.label", "label_2")) #
+names(meanAllDat)[4] = 'y'
 
 # head(meanAllDat)
 # meanAllDat1 <- subset(meanAllDat, trials_2.label == "Non-cued (high)" | trials_2.label == "Non-cued (low)" | trials_2.label == "Cued high")
@@ -107,15 +109,16 @@ library(wesanderson)
 require(ggplot2)
 if (showAllTrials == 0) {
 
+tsize= 12 # text size
 # plot windows 
 
-ggplot(meanAllDat, aes(x=label_2, y= trials_2.intensity,color = trials_2.label,  group = trials_2.label)) + # , linetype=trials_2.label 
+ggplot(meanAllDat, aes(x=label_2, y= y,color = trials_2.label,  group = trials_2.label)) + # , linetype=trials_2.label 
   geom_line(size = 1.3) +
-  geom_errorbar(aes(ymin=trials_2.intensity-ci, ymax=trials_2.intensity+ci),
+  geom_errorbar(aes(ymin=y-ci, ymax=y+ci),
                 width=.1, size= 1)+ # , color='red'
   theme_bw()+
   #  facet_wrap(~ KI) +
-  theme(text = element_text(size=12, face = 'bold'))+
+  theme(text = element_text(size=tsize))+
   theme(
     plot.background = element_blank()
     ,panel.grid.major = element_blank()
@@ -126,12 +129,12 @@ ggplot(meanAllDat, aes(x=label_2, y= trials_2.intensity,color = trials_2.label, 
  #   theme(axis.line = element_line(color = 'black', size = 1)) +
   xlab("Trials") +
   theme(axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0))) +
-  theme(axis.text.x = element_text(size="12", angle = 0, hjust = 0.5, face = 'bold',color = 'black'))+
-  ylab("Contrast increment (lower == higher acuity) ") +
-  theme(axis.text.y = element_text(size="12", angle = 0, hjust = 0, face = 'bold',color = 'black')) +
+  theme(axis.text.x = element_text(size=tsize, angle = 0, hjust = 0.5, color = 'black'))+
+  ylab("Contrast increment (percentage change) ") +
+  theme(axis.text.y = element_text(size=tsize, angle = 0, hjust = 0,color = 'black')) +
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
-  expand_limits(y=c(15, 35)) +                        # Expand y range
-  theme(legend.title = element_blank(), legend.text=element_text(size=12)) +
+#  expand_limits(y=c(30, 90)) +                        # Expand y range
+  theme(legend.title = element_blank(), legend.text=element_text(size=tsize)) +
   theme(legend.position= c(0.18,0.18)) +
   scale_colour_manual(values=c("#009E73", "#F0E442", "#0072B2", "#D55E00")) 
 
@@ -146,20 +149,20 @@ ggplot(meanAllDat, aes(x=label_2, y= trials_2.intensity,color = trials_2.label, 
   #scale_color_manual(values = wes_palette("Rushmore1",4,"discrete")) 
   # scale_color_manual(values = wes_palette("Zissou1",4,"discrete")) 
 
-#dataAll <- subset(allDat, label_2 == '35...65') 
+#dataAll <- subset(allDat, label_2 == '46...65') 
 allDat$label_2 <- as.factor(allDat$label_2)
 dataAll <- subset(allDat, label_2 == '51...65')  
+#dataAll <- subset(allDat, label_2 == '36...65')  
 
 meanLast <- summarySE(dataAll, measurevar="increment", groupvars=c("trials_2.label")) #
 
-tsize= 12 # text size
 
 ggplot(meanLast, aes(x=trials_2.label, y=increment)) + 
   geom_bar(fill = wes_palette("Royal1",4,"discrete"),#c( "#D55E00", "#009E73", "#F0E442", "#0072B2"),# 'white',
            stat="identity",
-           width=0.6,
+           width=0.7,
            colour="black",
-           size = 1.3) +
+           size = 1) +
   geom_point(size=2, position=position_dodge(1)) +
   theme_bw()+
   theme(
@@ -180,8 +183,36 @@ ggplot(meanLast, aes(x=trials_2.label, y=increment)) +
   geom_errorbar(aes(ymin=increment-ci, ymax=increment+ci), color = 'black', width=.25, size= 1.25, position=position_dodge(.1)) +
   theme( axis.line = element_line(colour = "black", 
                                   size = 1, linetype = "solid"))
-  
 
+# grey
+  
+ggplot(meanLast, aes(x=trials_2.label, y=increment, fill =trials_2.label)) + 
+  geom_bar(stat = "identity",
+           width=0.8,
+           colour="black",
+           size = 1) +
+  geom_point(size=2, position=position_dodge(1)) +
+  theme_bw()+
+  theme(
+    plot.background = element_blank()
+    ,panel.grid.major = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.border = element_blank()
+    ,axis.ticks = element_line(size = 1)
+  ) +
+  theme(text = element_text(size=tsize)) +
+  ylab("Contrast increment (presentage change)") +
+  xlab(" ") +
+  #     coord_cartesian(ylim = c(15, 30)) +
+  theme(axis.text.y = element_text(size=tsize,face="plain", angle = 0, hjust = 0), 
+        axis.title=element_text(size=tsize,face="plain")) +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 5, b = 0, l = 0))) +
+  theme(axis.text.x = element_text(size=tsize,face="plain", angle = 0, hjust = 0.5, color = 'black')) +  # element_text(size="12", angle = 0, hjust = 0)
+  geom_errorbar(aes(ymin=increment-ci, ymax=increment+ci), color = 'black', width=.25, size= 1.25, position=position_dodge(.1)) +
+  theme( axis.line = element_line(colour = "black", 
+                                  size = 1, linetype = "solid"))+
+  theme(legend.position = "none") +
+  scale_fill_grey(start = 0.2, end = 0.9)
 
     #if (runAnova == 1){
 
@@ -192,7 +223,10 @@ dataAll$cued[dataAll$trials_2.cueText == '?'] <- 'Non-Cued'
 
 dataAll$cued <- as.factor(dataAll$cued)
   
-meanLast <- summarySE(dataAll, measurevar="trials_2.intensity.z", groupvars=c("cued", "trials_2.frex", "participant")) #
+meanLast <- summarySE(dataAll, measurevar="increment", groupvars=c("cued", "trials_2.frex", "participant")) #
+#meanLast <- summarySE(dataAll, measurevar="increment", groupvars=c("cued", "trials_2.frex", "participant", "label_2")) #
+#meanLast <- summarySE(dataAll, measurevar="increment", groupvars=c("trials_2.label", "participant")) #
+#meanLast <- summarySE(allDat, measurevar="increment", groupvars=c("cued", "trials_2.frex", "participant", "label_2")) #
 
 #meanLast$trials_2.intensity.z <- as.numeric(meanLast$trials_2.intensity.z)
 
@@ -220,8 +254,12 @@ meanLast <- summarySE(dataAll, measurevar="trials_2.intensity.z", groupvars=c("c
 library(ez)
 options(contrasts=c("contr.sum", "contr.poly"))
 
-meanLast
-ezANOVA(data=meanLast, dv=.(trials_2.intensity.z), wid=.(participant), within=.(trials_2.frex, cued), detailed = TRUE, type=3)
+#meanLast
+#ezANOVA(data=meanLast, dv=.(increment), wid=.(participant), within=.(trials_2.frex, cued, label_2), detailed = TRUE, type=3)
+ezANOVA(data=meanLast, dv=.(increment), wid=.(participant), within=.(trials_2.frex, cued), detailed = TRUE, type=3)
+#ezANOVA(data=meanLast, dv=.(increment), wid=.(participant), within=.(trials_2.frex, trials_2.label), detailed = TRUE, type=3)
+
+
 #ezANOVA(data=allDat, dv=.(trials_2.intensity.z), wid=.(participant), within=.(trials_2.label, label_2), detailed = TRUE, type=3)
 
 
@@ -230,13 +268,30 @@ meanLast$participant <- as.factor(meanLast$participant)
 
 #  allDat1 <- subset(allDat, label_2 == '51...65')
 
-meanLast <- summarySE(dataAll, measurevar="trials_2.intensity.z", groupvars=c("trials_2.label","participant")) #
+meanLast2 <- summarySE(dataAll, measurevar="increment", groupvars=c("trials_2.label","participant")) #
   
-with(meanLast, pairwise.t.test(trials_2.intensity.z, trials_2.label, p.adjust.method="BH", paired=T))
+with(meanLast2, pairwise.t.test(increment, trials_2.label, p.adjust.method="BH", paired=T))
 # juku <- subset(allDat, label_2 == '51...65')
 
 
 #with(juku, pairwise.t.test(trials_2.intensity.z, trials_2.label, p.adjust.method="BH", paired=T))
+
+
+library(ARTool)# install.packages(ARTool)
+
+cols = c('participant', 'trials_2.frex', 'cued') #
+meanLast[,cols] <- lapply(meanLast[,cols], factor)
+
+m = art(increment ~ trials_2.frex * cued + (1|participant), data=meanLast) # affect # sDat
+anova(m)
+
+qqnorm(residuals(m)); qqline(residuals(m))
+
+
+library(phia)# install.packages('phia')
+
+testInteractions(artlm(m,"trials_2.frex:cued"), pairwise=c("trials_2.frex", "cued"), 
+                 adjustment='holm')
 
 
 
@@ -245,7 +300,7 @@ with(meanLast, pairwise.t.test(trials_2.intensity.z, trials_2.label, p.adjust.me
 
 x = subset(dataAll, trials_2.label == 'Cued Low')
 y = subset(dataAll, trials_2.label == 'Non-cued (low)')
-wilcox.test(x$trials_2.intensity.z, y$trials_2.intensity.z,paired=TRUE)
+wilcox.test(x$increment, y$increment,paired=TRUE)
 
 ## violin plot
 #install.packages('ggpubr')
