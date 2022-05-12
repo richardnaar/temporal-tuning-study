@@ -1,0 +1,207 @@
+﻿<?xml version="1.0" ?>
+<PsychoPy2experiment encoding="utf-8" version="2021.2.3">
+  <Settings>
+    <Param name="Audio latency priority" updates="None" val="use prefs" valType="str"/>
+    <Param name="Audio lib" updates="None" val="use prefs" valType="str"/>
+    <Param name="Completed URL" updates="None" val="" valType="str"/>
+    <Param name="Data file delimiter" updates="None" val="auto" valType="str"/>
+    <Param name="Data filename" updates="None" val="u'data/%s_%s_%s' % (expInfo['participant'], expName, expInfo['date'])" valType="code"/>
+    <Param name="Enable Escape" updates="None" val="True" valType="bool"/>
+    <Param name="Experiment info" updates="None" val="{'participant': '999', 'session': &quot;['before', 'after']&quot;, 'rest_dur': '60', 'EEG': '[0, 1]'}" valType="code"/>
+    <Param name="Force stereo" updates="None" val="True" valType="bool"/>
+    <Param name="Full-screen window" updates="None" val="True" valType="bool"/>
+    <Param name="HTML path" updates="None" val="" valType="str"/>
+    <Param name="Incomplete URL" updates="None" val="" valType="str"/>
+    <Param name="Monitor" updates="None" val="testMonitor" valType="str"/>
+    <Param name="Resources" updates="None" val="[]" valType="list"/>
+    <Param name="Save csv file" updates="None" val="False" valType="bool"/>
+    <Param name="Save excel file" updates="None" val="False" valType="bool"/>
+    <Param name="Save hdf5 file" updates="None" val="False" valType="bool"/>
+    <Param name="Save log file" updates="None" val="True" valType="bool"/>
+    <Param name="Save psydat file" updates="None" val="True" valType="bool"/>
+    <Param name="Save wide csv file" updates="None" val="True" valType="bool"/>
+    <Param name="Screen" updates="None" val="1" valType="num"/>
+    <Param name="Show info dlg" updates="None" val="True" valType="bool"/>
+    <Param name="Show mouse" updates="None" val="False" valType="bool"/>
+    <Param name="Units" updates="None" val="deg" valType="str"/>
+    <Param name="Use version" updates="None" val="" valType="str"/>
+    <Param name="Window size (pixels)" updates="None" val="[1920, 1080]" valType="list"/>
+    <Param name="blendMode" updates="None" val="avg" valType="str"/>
+    <Param name="color" updates="None" val="$[0,0,0]" valType="color"/>
+    <Param name="colorSpace" updates="None" val="rgb" valType="str"/>
+    <Param name="elAddress" updates="None" val="100.1.1.1" valType="str"/>
+    <Param name="elDataFiltering" updates="None" val="FILTER_LEVEL_2" valType="str"/>
+    <Param name="elLiveFiltering" updates="None" val="FILTER_LEVEL_OFF" valType="str"/>
+    <Param name="elModel" updates="None" val="EYELINK 1000 DESKTOP" valType="str"/>
+    <Param name="elPupilAlgorithm" updates="None" val="ELLIPSE_FIT" valType="str"/>
+    <Param name="elPupilMeasure" updates="None" val="PUPIL_AREA" valType="str"/>
+    <Param name="elSampleRate" updates="None" val="1000" valType="num"/>
+    <Param name="elSimMode" updates="None" val="False" valType="bool"/>
+    <Param name="elTrackEyes" updates="None" val="RIGHT_EYE" valType="str"/>
+    <Param name="elTrackingMode" updates="None" val="PUPIL_CR_TRACKING" valType="str"/>
+    <Param name="expName" updates="None" val="restingState" valType="str"/>
+    <Param name="exportHTML" updates="None" val="on Sync" valType="str"/>
+    <Param name="eyetracker" updates="None" val="None" valType="str"/>
+    <Param name="gpAddress" updates="None" val="127.0.0.1" valType="str"/>
+    <Param name="gpPort" updates="None" val="4242" valType="num"/>
+    <Param name="logging level" updates="None" val="exp" valType="code"/>
+    <Param name="mgBlink" updates="None" val="('MIDDLE_BUTTON',)" valType="list"/>
+    <Param name="mgMove" updates="None" val="CONTINUOUS" valType="str"/>
+    <Param name="mgSaccade" updates="None" val="0.5" valType="num"/>
+    <Param name="tbLicenseFile" updates="None" val="" valType="str"/>
+    <Param name="tbModel" updates="None" val="" valType="str"/>
+    <Param name="tbSampleRate" updates="None" val="60" valType="num"/>
+    <Param name="tbSerialNo" updates="None" val="" valType="str"/>
+  </Settings>
+  <Routines>
+    <Routine name="trial">
+      <CodeComponent name="code">
+        <Param name="Before Experiment" updates="constant" val="" valType="extendedCode"/>
+        <Param name="Before JS Experiment" updates="constant" val="" valType="extendedCode"/>
+        <Param name="Begin Experiment" updates="constant" val="fixCol = [0.25,0.25,0.25]&amp;#10;&amp;#10;# size of the grating in degrees&amp;#10;gabor_size = 2&amp;#10;# gratings midpoint distance from the centre (radius of the circle in degrees)&amp;#10;gabor_dist = 5&amp;#10;&amp;#10;# number of gratings in each arrey&amp;#10;distractorN = 2&amp;#10;contAnnulus = 0.4 # 0.5 # 0.7/2 #0.5 # opacity of the annulus is hard coded to 0.5 (0.4*0.5)&amp;#10;opaTarget = 0.5# 0.625 # 0.875/2#0.625 (0.5*0.4)&amp;#10;&amp;#10;annulusOri = randint(1,360)&amp;#10;&amp;#10;gabors_large = visual.ElementArrayStim(win, units='deg', fieldPos=(0.0, 0.0), &amp;#10;fieldSize=(30, 30), fieldShape='circle', nElements=distractorN, &amp;#10;sizes=20, xys=[(0,0), (0,0)], colors=([0.5, 0.5, 0.5]) , &amp;#10;colorSpace='rgb', opacities=[1,0.5], oris=annulusOri, sfs=2.0, contrs=contAnnulus, &amp;#10;phases=0, elementTex='sin',elementMask='circle', texRes=128,&amp;#10;interpolate=True, name=None, autoLog=None, maskParams=None)&amp;#10;&amp;#10;# circle used to cover two larger gabors&amp;#10;circle = visual.Circle(&amp;#10;win=win,&amp;#10;units=&quot;deg&quot;,&amp;#10;radius=6.5,&amp;#10;fillColor=[0, 0, 0],&amp;#10;lineColor=None,&amp;#10;edges=99&amp;#10;)&amp;#10;&amp;#10;# SMALL&amp;#10;gabors_small = visual.ElementArrayStim(win, units='deg', fieldPos=(0.0, 0.0), &amp;#10;fieldSize=(30, 30), fieldShape='circle', nElements=distractorN, &amp;#10;sizes=7.5, xys=[(0,0), (0,0)], colors=([0.5, 0.5, 0.5]) , &amp;#10;colorSpace='rgb', opacities=[1, 0.5], oris=annulusOri, sfs=2.0, contrs=contAnnulus, &amp;#10;phases=0, elementTex='sin',elementMask='circle', texRes=128, &amp;#10;interpolate=True, name=None, autoLog=None, maskParams=None)&amp;#10;&amp;#10;EEG = expInfo['EEG']&amp;#10;&amp;#10;def sendTrigger(t, trigN, EEG):&amp;#10;    if EEG == '1':&amp;#10;        if t &lt; 0.05 and t &gt; 0:  # send trigger for 50 ms and do not send the trigger before next flip time&amp;#10;            port.setData(int(trigN, 2))&amp;#10;        else:&amp;#10;            pass&amp;#10;            port.setData(0)&amp;#10;" valType="extendedCode"/>
+        <Param name="Begin JS Experiment" updates="constant" val="fixCol = [0.25, 0.25, 0.25];&amp;#10;gabor_size = 2;&amp;#10;gabor_dist = 5;&amp;#10;distractorN = 2;&amp;#10;contAnnulus = 0.4;&amp;#10;opaTarget = 0.5;&amp;#10;annulusOri = util.randint(1, 360);&amp;#10;gabors_large = new visual.ElementArrayStim(psychoJS.window, {&quot;units&quot;: &quot;deg&quot;, &quot;fieldPos&quot;: [0.0, 0.0], &quot;fieldSize&quot;: [30, 30], &quot;fieldShape&quot;: &quot;circle&quot;, &quot;nElements&quot;: distractorN, &quot;sizes&quot;: 20, &quot;xys&quot;: [[0, 0], [0, 0]], &quot;colors&quot;: [0.5, 0.5, 0.5], &quot;colorSpace&quot;: &quot;rgb&quot;, &quot;opacities&quot;: [1, 0.5], &quot;oris&quot;: annulusOri, &quot;sfs&quot;: 2.0, &quot;contrs&quot;: contAnnulus, &quot;phases&quot;: 0, &quot;elementTex&quot;: &quot;sin&quot;, &quot;elementMask&quot;: &quot;circle&quot;, &quot;texRes&quot;: 128, &quot;interpolate&quot;: true, &quot;name&quot;: null, &quot;autoLog&quot;: null, &quot;maskParams&quot;: null});&amp;#10;circle = new visual.Circle({&quot;win&quot;: psychoJS.window, &quot;units&quot;: &quot;deg&quot;, &quot;radius&quot;: 6.5, &quot;fillColor&quot;: [0, 0, 0], &quot;lineColor&quot;: null, &quot;edges&quot;: 99});&amp;#10;gabors_small = new visual.ElementArrayStim(psychoJS.window, {&quot;units&quot;: &quot;deg&quot;, &quot;fieldPos&quot;: [0.0, 0.0], &quot;fieldSize&quot;: [30, 30], &quot;fieldShape&quot;: &quot;circle&quot;, &quot;nElements&quot;: distractorN, &quot;sizes&quot;: 7.5, &quot;xys&quot;: [[0, 0], [0, 0]], &quot;colors&quot;: [0.5, 0.5, 0.5], &quot;colorSpace&quot;: &quot;rgb&quot;, &quot;opacities&quot;: [1, 0.5], &quot;oris&quot;: annulusOri, &quot;sfs&quot;: 2.0, &quot;contrs&quot;: contAnnulus, &quot;phases&quot;: 0, &quot;elementTex&quot;: &quot;sin&quot;, &quot;elementMask&quot;: &quot;circle&quot;, &quot;texRes&quot;: 128, &quot;interpolate&quot;: true, &quot;name&quot;: null, &quot;autoLog&quot;: null, &quot;maskParams&quot;: null});&amp;#10;EEG = expInfo[&quot;EEG&quot;];&amp;#10;function sendTrigger(t, trigN, EEG) {&amp;#10;    if ((EEG === &quot;1&quot;)) {&amp;#10;        if (((t &lt; 0.05) &amp;&amp; (t &gt; 0))) {&amp;#10;            port.setData(Number.parseInt(trigN, 2));&amp;#10;        } else {&amp;#10;            port.setData(0);&amp;#10;        }&amp;#10;    }&amp;#10;}&amp;#10;" valType="extendedCode"/>
+        <Param name="Begin JS Routine" updates="constant" val="&amp;#10;        // add-on: list(s: string): string[]&amp;#10;        function list(s) {&amp;#10;            // if s is a string, we return a list of its characters&amp;#10;            if (typeof s === 'string')&amp;#10;                return s.split('');&amp;#10;            else&amp;#10;                // otherwise we return s:&amp;#10;                return s;&amp;#10;        }&amp;#10;&amp;#10;        n = util.randint(1, 5);&amp;#10;randTime = list(util.randint(1, Number.parseInt(expInfo[&quot;rest_dur&quot;]), n));&amp;#10;indx = 0;&amp;#10;trigNStart = &quot;11000000&quot;;&amp;#10;trigNChange = &quot;11110000&quot;;&amp;#10;offCOl = true;&amp;#10;" valType="extendedCode"/>
+        <Param name="Begin Routine" updates="constant" val="&amp;#10;n = randint(1,5)&amp;#10;randTime = list(randint(1,int(expInfo['rest_dur']), n))&amp;#10;indx = 0&amp;#10;trigNStart = '11000000'&amp;#10;trigNChange = '11110000'&amp;#10;&amp;#10;offCOl = True" valType="extendedCode"/>
+        <Param name="Code Type" updates="None" val="Auto-&gt;JS" valType="str"/>
+        <Param name="Each Frame" updates="constant" val="sendTrigger(t, trigNStart, EEG)&amp;#10;gabors_large.draw()&amp;#10;#circle.draw()&amp;#10;#gabors_small.draw()&amp;#10;#&amp;#10;#if any(t - randTime) &lt; 0.25 and any(t - randTime) &gt; 0:&amp;#10;#    fixCol = [0.75,0.75,0.75]&amp;#10;#else:&amp;#10;#    fixCol =  [0.25,0.25,0.25]&amp;#10;&amp;#10;if True in (abs(t - ri) &lt; 0.25 for ri in randTime): # and True in (t - ri &gt; 0 for ri in randTime):&amp;#10;    if offCOl:&amp;#10;        cTime = t&amp;#10;    sendTrigger(t-cTime, trigNChange, EEG)&amp;#10;    fixCol = [0.75,0.75,0.75]&amp;#10;else:&amp;#10;    offCOl = True&amp;#10;    fixCol =  [0.25,0.25,0.25]" valType="extendedCode"/>
+        <Param name="Each JS Frame" updates="constant" val="/* Syntax Error: Fix Python code */" valType="extendedCode"/>
+        <Param name="End Experiment" updates="constant" val="" valType="extendedCode"/>
+        <Param name="End JS Experiment" updates="constant" val="" valType="extendedCode"/>
+        <Param name="End JS Routine" updates="constant" val="psychoJS.experiment.addData(&quot;nPoints&quot;, n);&amp;#10;" valType="extendedCode"/>
+        <Param name="End Routine" updates="constant" val="thisExp.addData('nPoints', n)" valType="extendedCode"/>
+        <Param name="disabled" updates="None" val="False" valType="bool"/>
+        <Param name="name" updates="None" val="code" valType="code"/>
+      </CodeComponent>
+      <PolygonComponent name="fix">
+        <Param name="colorSpace" updates="constant" val="rgb" valType="str"/>
+        <Param name="contrast" updates="constant" val="1" valType="num"/>
+        <Param name="disabled" updates="None" val="False" valType="bool"/>
+        <Param name="durationEstim" updates="None" val="" valType="code"/>
+        <Param name="fillColor" updates="set every frame" val="$fixCol" valType="str"/>
+        <Param name="fillColorSpace" updates="constant" val="rgb" valType="str"/>
+        <Param name="interpolate" updates="constant" val="linear" valType="str"/>
+        <Param name="lineColor" updates="constant" val="$[1,1,1]" valType="str"/>
+        <Param name="lineColorSpace" updates="constant" val="rgb" valType="str"/>
+        <Param name="lineWidth" updates="constant" val="0" valType="code"/>
+        <Param name="nVertices" updates="constant" val="50" valType="int"/>
+        <Param name="name" updates="None" val="fix" valType="code"/>
+        <Param name="opacity" updates="constant" val="1" valType="code"/>
+        <Param name="ori" updates="constant" val="0" valType="code"/>
+        <Param name="pos" updates="constant" val="(0, 0)" valType="code"/>
+        <Param name="saveStartStop" updates="None" val="True" valType="bool"/>
+        <Param name="shape" updates="constant" val="regular polygon..." valType="str"/>
+        <Param name="size" updates="set every frame" val="0.5" valType="code"/>
+        <Param name="startEstim" updates="None" val="0" valType="code"/>
+        <Param name="startType" updates="None" val="frame N" valType="str"/>
+        <Param name="startVal" updates="None" val="0" valType="code"/>
+        <Param name="stopType" updates="None" val="frame N" valType="str"/>
+        <Param name="stopVal" updates="constant" val="" valType="code"/>
+        <Param name="syncScreenRefresh" updates="None" val="True" valType="bool"/>
+        <Param name="units" updates="None" val="deg" valType="str"/>
+        <Param name="vertices" updates="constant" val="" valType="list"/>
+      </PolygonComponent>
+    </Routine>
+    <Routine name="resp">
+      <SliderComponent name="slider">
+        <Param name="borderColor" updates="constant" val="Black" valType="color"/>
+        <Param name="color" updates="constant" val="Black" valType="color"/>
+        <Param name="colorSpace" updates="constant" val="rgb" valType="str"/>
+        <Param name="contrast" updates="constant" val="1" valType="num"/>
+        <Param name="disabled" updates="None" val="False" valType="bool"/>
+        <Param name="durationEstim" updates="None" val="" valType="code"/>
+        <Param name="fillColor" updates="constant" val="Red" valType="color"/>
+        <Param name="flip" updates="constant" val="False" valType="bool"/>
+        <Param name="font" updates="constant" val="Open Sans" valType="str"/>
+        <Param name="forceEndRoutine" updates="constant" val="False" valType="bool"/>
+        <Param name="granularity" updates="constant" val="1" valType="num"/>
+        <Param name="initVal" updates="None" val="" valType="code"/>
+        <Param name="labels" updates="constant" val="0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20" valType="list"/>
+        <Param name="letterHeight" updates="constant" val="1" valType="num"/>
+        <Param name="name" updates="None" val="slider" valType="code"/>
+        <Param name="opacity" updates="constant" val="" valType="num"/>
+        <Param name="ori" updates="constant" val="0" valType="num"/>
+        <Param name="pos" updates="constant" val="(0, -0.4)" valType="list"/>
+        <Param name="readOnly" updates="constant" val="False" valType="bool"/>
+        <Param name="saveStartStop" updates="None" val="True" valType="bool"/>
+        <Param name="size" updates="constant" val="(30, 1)" valType="list"/>
+        <Param name="startEstim" updates="None" val="" valType="code"/>
+        <Param name="startType" updates="None" val="time (s)" valType="str"/>
+        <Param name="startVal" updates="None" val="0.0" valType="code"/>
+        <Param name="stopType" updates="None" val="condition" valType="str"/>
+        <Param name="stopVal" updates="constant" val="" valType="code"/>
+        <Param name="storeHistory" updates="constant" val="False" valType="bool"/>
+        <Param name="storeRating" updates="constant" val="True" valType="bool"/>
+        <Param name="storeRatingTime" updates="constant" val="True" valType="bool"/>
+        <Param name="styleTweaks" updates="constant" val="()" valType="list"/>
+        <Param name="styles" updates="constant" val="rating" valType="str"/>
+        <Param name="syncScreenRefresh" updates="None" val="True" valType="bool"/>
+        <Param name="ticks" updates="constant" val="(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)" valType="list"/>
+        <Param name="units" updates="None" val="from exp settings" valType="str"/>
+      </SliderComponent>
+      <ButtonComponent name="button">
+        <Param name="anchor" updates="constant" val="center" valType="str"/>
+        <Param name="bold" updates="constant" val="True" valType="bool"/>
+        <Param name="borderColor" updates="constant" val="None" valType="color"/>
+        <Param name="borderWidth" updates="constant" val="3" valType="num"/>
+        <Param name="callback" updates="constant" val="" valType="extendedCode"/>
+        <Param name="color" updates="constant" val="white" valType="color"/>
+        <Param name="colorSpace" updates="constant" val="rgb" valType="str"/>
+        <Param name="contrast" updates="constant" val="1" valType="num"/>
+        <Param name="disabled" updates="None" val="False" valType="bool"/>
+        <Param name="durationEstim" updates="None" val="" valType="code"/>
+        <Param name="fillColor" updates="constant" val="darkgrey" valType="color"/>
+        <Param name="font" updates="constant" val="Arvo" valType="str"/>
+        <Param name="forceEndRoutine" updates="constant" val="True" valType="bool"/>
+        <Param name="italic" updates="constant" val="False" valType="bool"/>
+        <Param name="letterHeight" updates="constant" val="1" valType="num"/>
+        <Param name="name" updates="None" val="button" valType="code"/>
+        <Param name="oncePerClick" updates="constant" val="True" valType="bool"/>
+        <Param name="opacity" updates="constant" val="" valType="num"/>
+        <Param name="ori" updates="constant" val="0" valType="num"/>
+        <Param name="padding" updates="constant" val="" valType="num"/>
+        <Param name="pos" updates="constant" val="(0, -6)" valType="list"/>
+        <Param name="save" updates="None" val="every click" valType="str"/>
+        <Param name="saveStartStop" updates="None" val="True" valType="bool"/>
+        <Param name="size" updates="constant" val="" valType="list"/>
+        <Param name="startEstim" updates="None" val="" valType="code"/>
+        <Param name="startType" updates="None" val="time (s)" valType="str"/>
+        <Param name="startVal" updates="None" val="0" valType="code"/>
+        <Param name="stopType" updates="None" val="duration (s)" valType="str"/>
+        <Param name="stopVal" updates="constant" val="" valType="code"/>
+        <Param name="syncScreenRefresh" updates="None" val="True" valType="bool"/>
+        <Param name="text" updates="constant" val="VALMIS" valType="str"/>
+        <Param name="timeRelativeTo" updates="constant" val="button onset" valType="str"/>
+        <Param name="units" updates="None" val="from exp settings" valType="str"/>
+      </ButtonComponent>
+      <TextComponent name="qText">
+        <Param name="color" updates="constant" val="white" valType="color"/>
+        <Param name="colorSpace" updates="constant" val="rgb" valType="str"/>
+        <Param name="contrast" updates="constant" val="1" valType="num"/>
+        <Param name="disabled" updates="None" val="False" valType="bool"/>
+        <Param name="durationEstim" updates="None" val="" valType="code"/>
+        <Param name="flip" updates="constant" val="None" valType="str"/>
+        <Param name="font" updates="constant" val="Open Sans" valType="str"/>
+        <Param name="languageStyle" updates="None" val="LTR" valType="str"/>
+        <Param name="letterHeight" updates="constant" val="1" valType="num"/>
+        <Param name="name" updates="None" val="qText" valType="code"/>
+        <Param name="opacity" updates="constant" val="" valType="num"/>
+        <Param name="ori" updates="constant" val="0" valType="num"/>
+        <Param name="pos" updates="constant" val="(0, 8)" valType="list"/>
+        <Param name="saveStartStop" updates="None" val="True" valType="bool"/>
+        <Param name="startEstim" updates="None" val="" valType="code"/>
+        <Param name="startType" updates="None" val="time (s)" valType="str"/>
+        <Param name="startVal" updates="None" val="0.0" valType="code"/>
+        <Param name="stopType" updates="None" val="duration (s)" valType="str"/>
+        <Param name="stopVal" updates="constant" val="" valType="code"/>
+        <Param name="syncScreenRefresh" updates="None" val="True" valType="bool"/>
+        <Param name="text" updates="constant" val="Mitu korda täpp heledaks muutus?&amp;#10;&amp;#10;Vastus anna palun hiirega alloleval skaalal sobiva numbri juures klõpsates. Kui oled valmis, siis vajuta nupul &quot;VALMIS&quot;." valType="str"/>
+        <Param name="units" updates="None" val="from exp settings" valType="str"/>
+        <Param name="wrapWidth" updates="constant" val="20" valType="num"/>
+      </TextComponent>
+    </Routine>
+  </Routines>
+  <Flow>
+    <Routine name="trial"/>
+    <Routine name="resp"/>
+  </Flow>
+</PsychoPy2experiment>
