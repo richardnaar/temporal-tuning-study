@@ -7,9 +7,9 @@
 #ggsave(pl, filename = "figures/condition curves base.tiff", width = sc*8, height = sc*5, units = "cm", dpi = 600, scale= 1)
 
 zscore = 0
-analyseOneSub = 1; subi = 15
+analyseOneSub = 1; subi = 25
 showAllTrialsMean = 0
-showAllTrials = 0
+showAllTrials = 1
 analyseEEG = 0
 runAnova = 0
 
@@ -34,15 +34,16 @@ for (subi in 1:length(filesB)){
 # reading data in
 behDat <- read.csv(filesB[subi], stringsAsFactors=FALSE)
 
-# contrast of the annulus == 0.7
+# contrast of the annulus == 0.8
 # opacity of the annulus == 0.5
-# true contrast == opacity x contrast == 0.7*0.5 = 0.35 (35%)
+# true contrast == opacity x contrast == 0.8*0.5 = 0.4 (40%)
 
 # contrast of the target == 0.4 or stairs value
-# opacity of the target == 0.875
-# true contrast == opacity x contrast == 0.875*0.4 = 0.35 (35%)
+# opacity of the target == 1
+# true contrast == opacity x contrast == 1*0.4 = 0.4 (40%)
 
-behDat$trials_2.intensity <- behDat$trials_2.intensity * 0.875 * 100
+
+behDat$trials_2.intensity <- behDat$trials_2.intensity * 100
 behDat$trials_2.intensity.z <- scale(behDat$trials_2.intensity , center=TRUE, scale = TRUE)
 
 allDat = rbind(allDat, behDat)
@@ -70,7 +71,7 @@ for (ti in 1:length(allDat$trials_2.label)){
 
 }
 
-
+# allDat2 = subset(allDat, trials_2.thisRepN > 64)
 #allDat$label_2 <- ordered(allDat$label_2, levels = c("1...5", "6...10", "11...15","21...26","26...30", "35...65"))
 allDat$label_2 <- ordered(allDat$label_2, levels = c("1...5", "6...20", "21...35","36...50", "51...65"))
 #allDat$label_2 <- ordered(allDat$label_2, levels = c("1...5", "6...35", "36...65"))
@@ -89,7 +90,7 @@ allDat$cued[allDat$trials_2.cueText == 'fast'] <- 'Cued'
 allDat$cued[allDat$trials_2.cueText == 'slow'] <- 'Cued'   
 allDat$cued[allDat$trials_2.cueText == '?'] <- 'Non-Cued'   
 
-allDat$increment = allDat$trials_2.intensity/0.35
+allDat$increment = allDat$trials_2.intensity/0.4 #
 
 # means
 require(Rmisc)
@@ -222,13 +223,20 @@ dataAll$cued[dataAll$trials_2.cueText == 'slow'] <- 'Cued'
 dataAll$cued[dataAll$trials_2.cueText == '?'] <- 'Non-Cued'   
 
 dataAll$cued <- as.factor(dataAll$cued)
-  
-meanLast <- summarySE(dataAll, measurevar="increment", groupvars=c("cued", "trials_2.frex", "participant")) #
+
+# try lmer
+
+mod = lmer(increment ~ cued * trials_2.frex + (1|participant), data=dataAll)
+
+summary(mod)
+
+meanLast <- summarySE(dataAll, measurevar="increment", groupvars=c("cued", "trials_2.frex","participant")) #
 #meanLast <- summarySE(dataAll, measurevar="increment", groupvars=c("cued", "trials_2.frex", "participant", "label_2")) #
 #meanLast <- summarySE(dataAll, measurevar="increment", groupvars=c("trials_2.label", "participant")) #
 #meanLast <- summarySE(allDat, measurevar="increment", groupvars=c("cued", "trials_2.frex", "participant", "label_2")) #
 
 #meanLast$trials_2.intensity.z <- as.numeric(meanLast$trials_2.intensity.z)
+
 
 
 #meanJasp1 <- subset(meanLast, cued == 'Cued')
@@ -250,6 +258,12 @@ meanLast <- summarySE(dataAll, measurevar="increment", groupvars=c("cued", "tria
 
 
 #write.table(meanLastJasp, paste0(getwd(),"/meanLast.txt"), sep="\t", dec = ",")
+
+
+mod = lmer(increment ~ cued * trials_2.frex + (trials_2.frex|participant), data=meanLast)
+
+summary(mod)
+
 
 library(ez)
 options(contrasts=c("contr.sum", "contr.poly"))
@@ -277,6 +291,7 @@ with(meanLast2, pairwise.t.test(increment, trials_2.label, p.adjust.method="BH",
 #with(juku, pairwise.t.test(trials_2.intensity.z, trials_2.label, p.adjust.method="BH", paired=T))
 
 
+
 library(ARTool)# install.packages(ARTool)
 
 cols = c('participant', 'trials_2.frex', 'cued') #
@@ -286,7 +301,7 @@ m = art(increment ~ trials_2.frex * cued + (1|participant), data=meanLast) # aff
 anova(m)
 
 qqnorm(residuals(m)); qqline(residuals(m))
-
+shapiro.test(residuals(m))
 
 library(phia)# install.packages('phia')
 
@@ -361,7 +376,8 @@ ggpaired(meanLast2, x = 'cued', y = 'trials_2.intensity.z',
   
 meanAllDat <- summarySE(allDat, measurevar="trials_2.intensity", groupvars=c("trials_2.label", "trials_2.thisRepN")) #
 
-# Make the plot
+
+# Make the plot 
 ggplot(data=meanAllDat, aes(x=trials_2.thisRepN, y=trials_2.intensity, ymin=trials_2.intensity-ci, ymax=trials_2.intensity+ci, fill=trials_2.label, linetype=trials_2.label)) + 
   geom_line(size = 0.71) + 
   geom_ribbon(alpha=0.5) + 
@@ -402,6 +418,17 @@ lablesl <- subset(behDat, trials_2.label == 'low')
 lablesh5 <- subset(behDat, trials_2.label == 'high50')
 lablesl5 <- subset(behDat, trials_2.label == 'low50')
 
+#lablesh <- subset(behDat, trials_2.label == 'high_high')
+#lablesl <- subset(behDat, trials_2.label == 'low_low')
+#lablesh5 <- subset(behDat, trials_2.label == 'high50')
+#lablesl5 <- subset(behDat, trials_2.label == 'low50')
+
+#lablesh <- subset(lablesh, trials_2.thisRepN < 39)
+#lablesl <- subset(lablesl, trials_2.thisRepN < 39)
+#lablesh5 <- subset(lablesh5, trials_2.thisRepN < 39)
+#lablesl5 <- subset(lablesl5, trials_2.thisRepN < 39)
+
+
 if (zscore) {
   
   matplot(lablesh$trials_2.thisN, cbind(lablesh$trials_2.intensity.z,lablesl$trials_2.intensity.z,  
@@ -420,8 +447,8 @@ if (zscore) {
           col=c(1,6,1,6), pch = c(19, 18, 21, 22),  cex=1) # pch=20 , , 
   
   
-  legend(-15,7, legend = c('High','Low','Random (High)','Random (Low)'), 
-         col=c(1,6,1,6), pch = c(19, 18, 21, 22), cex = 0.5) # c("darkgreen","darkred", "green", "red")
+  legend(-15,7, legend = c('High','Low','Random (High)','Random (Low)' ), # 'Cued High (High)','Cued Low (Low)','Cued High (But Low)','Cued Low (But High)' #'High','Low','Random (High)','Random (Low)' 
+         col=c(1,6,1,6), pch = c(19, 18, 21, 22), cex = 0.6) # c("darkgreen","darkred", "green", "red")
 }
 
   

@@ -1475,8 +1475,6 @@ end
 %% plotting
 
 while do.plotting == 1
-codePath = 'C:\Users\Richard Naar\Documents\dok\ssvep\Visit to York\Code\temporal-tuning-study\';  % directory for datafiles
-addpath(codePath)
 % 11, 19, 22, 27,38     
 % low = 4;
 % high = 15;
@@ -1496,45 +1494,120 @@ implistSNR = dir([dataDir, '*.mat']);  %orderfields(implistSNR, date)
 % implistSNR = implistSNR(idx);
 
 %% load data and trim frex
+dati = 5;%STIM: 28; 5; 6; %CUE: 15;% 16; %17; TFUR-grandAverage-OC-stimLocked
 
-dataIdx = [28,5,6,15,16,17];
+load([dataDir, implistSNR(dati).name]); % load data
+fprintf('loading participant: %s \n', implistSNR(dati).name);
 
-dati = 28;%STIM: 28; 5; 6; %CUE: 15;% 16; %17; TFUR-grandAverage-OC-stimLocked
-grandData = [];
-% ADD: for loop going over all the data files
-for dati = 1:length(dataIdx)
-    
-load([dataDir, implistSNR(dataIdx(dati)).name]); % load data
-fprintf('loading participant: %s \n', implistSNR(dataIdx(dati)).name);
+allSnrE = grandAverage;
 
-avgDat = grandAverage;
-
-
-nFrex = 43; %nFrex = size([avgDat{1,1}],1);
+%     nFrex = size([allSnrE{1,1}],2); %nFrex = size([allSnrE{1,1}],1);
+nFrex = 43; %nFrex = size([allSnrE{1,1}],1);
 
 %     hz = abs(grandAverage{subi, eventIndx}(2:44)).^2;
 
-datNotStandard = [];
-for condi = 1:4% size(avgDat,2)
-    datn = squeeze(cat(3,avgDat{:,condi}));
+datStandard = [];
+for condi = 1:4% size(allSnrE,2)
+    datn = squeeze(cat(3,allSnrE{:,condi}));
     datn = datn(2:nFrex+1, :); % excluding 0 Hz
-    datNotStandard = [datNotStandard; datn];
+    datStandard = [datStandard; datn];
 end
 
+%  currently not standardizing 
+% meanCentered = bsxfun(@minus,datStandard, mean(datStandard));
+% modifZdat = bsxfun(@rdivide, meanCentered, mean(datStandard));
+% medianCentered = .6745.*bsxfun(@minus,datStandard,median(datStandard));
+% modifZdat = bsxfun(@rdivide, medianCentered, median(abs(medianCentered)));
+modifZdat = datStandard;
 
+
+%%
+for frex = 1:2
+comp1 = frex;  
+% comp2 = 3;
+figN = 1;
+% figure(figN)
+foiLow = [4:4:40];  %foiLow = foiLow+1;
+foiHigh = [15:15:40];%  foiHigh = foiHigh+1;
+% high
+figure(frex)
+subplot(3,1,1); hold on
+% bar(grandAverage{comp1}(2:60));
+% bar(mean( squeeze(cat(3,allSnrE{:,comp1})), 2));
+
+if comp1 == 1
+    predDat = abs(mean(modifZdat(1:nFrex,:),2)).^2; % high 
+else
+    predDat = abs(mean(modifZdat(nFrex+1:nFrex*2,:),2)).^2; % low
+end
+    
+bar(predDat)
+
+imf = [11, 19, 22, 27, 38, 41];
+% imfTxt = ['F2-F1','F1+F2','2*F2-2*F1','3*F1+F2','(F1+F2)*2'];
+imfTxt = [{'F2 - F1'},{'F1 + F2'},{'(2*F2) - (2*F1)'},{'3*F1 + F2'},{'(F1 + F2)*2'}, {'3*F2 - F1'}];
+% maxY = max(mean( squeeze(cat(3,allSnrE{:,comp1})), 2))+1;
+maxY = max(predDat)+100; minY = min(predDat);
+% text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf))) % *mean(EEG.data(31,:))
+% set(gca,'ylim',[min(mean( squeeze(cat(3,allSnrE{:,comp1})), 2)) maxY+2], 'FontSize',12)
+% set(gca,'ylim',[minY maxY], 'FontSize',12)
+
+
+%% plot the colors
+% FOIsLow = zeros(size(grandAverage{1})); FOIsLow(foiLow) = grandAverage{1}(foiLow);
+% bar(FOIsLow(2:60), 'r')
+% % color high
+% FOIsHigh = zeros(size(grandAverage{1})); FOIsHigh(foiHigh) = grandAverage{1}(foiHigh);
+%% bar(FOIsHigh(2:60), 'g')
+title(strrep(event{comp1}, '_',' '))
+%% high - random
+% subtraction = grandAverage{comp1}(1:60)-(grandAverage{3}(1:60)+grandAverage{4}(1:60))/2;
+% subtraction_lrnd = mean( squeeze(cat(3,allSnrE{:,comp1})), 2)-(mean( squeeze(cat(3,allSnrE{:,3})), 2)+mean( squeeze(cat(3,allSnrE{:,4})), 2))/2;
+
+highrnd = mean(modifZdat(nFrex*2+1:nFrex*3,:),2);
+lowrnd = mean(modifZdat(nFrex*3+1:nFrex*4,:),2);
+
+subtraction_lrnd = predDat - (lowrnd+highrnd)/2;
+
+
+
+subplot(3,1,2); hold on
+bar(subtraction_lrnd);
+maxY = max(subtraction_lrnd)+10; minY = min(subtraction_lrnd)-10;
+% text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf)))
+% set(gca,'ylim',[min(subtraction)-2 maxY+2], 'FontSize',12)
+%% plot the colors
+% color low
+
+FOIsLow = zeros(size(subtraction_lrnd)); FOIsLow(foiLow) = subtraction_lrnd(foiLow);
+bar(FOIsLow, 'm')
+
+% color high
+FOIsHigh = zeros(size(subtraction_lrnd)); FOIsHigh(foiHigh) = subtraction_lrnd(foiHigh);
+bar(FOIsHigh, 'k')
+title('certain - uncertain condition')
+legend({'Other';'Low';'High'})
+% set(gca,'ylim',[minY maxY], 'FontSize',12)
+
+%% random high
+subplot(3,1,3);
+avgRnd = (lowrnd+highrnd)/2;
+avgRand = subtraction_lrnd;
+bar(avgRnd);
+maxY = max(avgRnd)+1;
+% text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf)))
+% set(gca,'ylim',[min(avgRnd) maxY+2], 'FontSize',12)
+%  title(strrep(event{comp2}, '_',' '))
+title('RANDOM')
+pause()
+end
 %% both on the same
-% ADD: for loop going over ??
-
-standOption = 3;
-for standOption = 1:3
-% standardize within conditions over bins and subjects (1)
-% standardize within bins and subjetcs over conditions (2)
-% standardize within subjects and over bins and conditions (3) 
-
-
+% for subi = 1:23
+% collatz = [30, 15, 46, 23, 70, 35, 106, 53, 160, 80, 40, 20, 10, 5, 16, 8, 4, 2, 1]
 figure(1)
 leg = 1;
 comp1 = 1;  
+maxF = 40;
 
 % color
 colHigh = [0 0 .7];
@@ -1543,7 +1616,6 @@ imfCol = [0 .7 0];
 colPins = [0 0 0];
 
 figN = 1;
-maxF = nFrex;
 % figure(figN)
 foiLow = [4:4:maxF];  
 foiHigh = [15:15:maxF];
@@ -1551,55 +1623,45 @@ foiHigh = [15:15:maxF];
 % higher frequency
 % subplot(2,1,1); 
 hold on
-% HIGH %
+% highDat = squeeze(cat(3,allSnrE{:,comp1})); highDat = highDat(1:maxF,:);
+% randoDat = (squeeze(cat(3,allSnrE{:,3}))+squeeze(cat(3,allSnrE{:,4}))) / 2; randoDat = randoDat(1:maxF,:);
 
-% % standardize within conditions over all bins and subjects
-if standOption == 1
-    highDat = abs(datNotStandard(1:nFrex,:)).^2;
-    highDat = wcond(highDat, 2); 
-end
-% standardize within bins and subjetcs over conditions
-if standOption == 2
-    highDat = abs(datNotStandard(1:nFrex,:)).^2;
-    lowDat = abs(datNotStandard(nFrex+1:nFrex*2,:)).^2;
-    highrnd = abs(datNotStandard(nFrex*2+1:nFrex*3,:)).^2;
-    lowrnd = abs(datNotStandard(nFrex*3+1:nFrex*4,:)).^2; 
+% lowDat = abs(mean(modifZdat(nFrex+1:nFrex*2,:),2)).^2;
+% highDat = abs(mean(modifZdat(1:nFrex,:),2)).^2;
 
-    datNotSPow = abs(datNotStandard).^2;
-    datMean = [mean(highDat,2), mean(lowDat,2), mean(highrnd,2), mean(lowrnd,2)];
+% bsxfun(@minus, modifZdat(1:nFrex,:), randoDat)
 
-    numer = bsxfun(@minus, highDat, min(datMean')');
-    highDat = bsxfun(@rdivide, numer, max(datMean')' - min(datMean')');
-end
-% % standardize within subjects and over bins and conditions
-if standOption == 3
-    datNotSPow = abs(datNotStandard).^2;
-    datStand = wcond(datNotSPow, 1);
-    highDat = datStand(1:nFrex,:);
-end
-% LOW %
+highDat = abs(modifZdat(1:nFrex,:)).^2; % highDat = highDat/1000; % convert to mV
+highDatMean = mean(highDat,2);
+highDat_numer = bsxfun(@minus, highDat, min(highDatMean));
+highDat = bsxfun(@rdivide, highDat_numer, max(highDatMean) - min(highDatMean));
 
-% % standardize within conditions over all bins and subjects
-if standOption == 1
-    lowDat = abs(datNotStandard(nFrex+1:nFrex*2,:)).^2;
-    lowDat = wcond(lowDat,2); 
-end
+lowDat = abs(modifZdat(nFrex+1:nFrex*2,:)).^2; % lowDat = lowDat/1000; % convert to mV
+lowDatMean = mean(lowDat,2);
+lowDat_numer = bsxfun(@minus, lowDat, min(lowDatMean ));
+lowDat = bsxfun(@rdivide, lowDat_numer, max(lowDatMean ) - min(lowDatMean ));
 
-% standardize within bins and subjetcs over conditions
-if standOption == 2
-    numer = bsxfun(@minus, lowDat, min(datMean')');
-    lowDat = bsxfun(@rdivide, numer, max(datMean')' - min(datMean')');
-end
+% highrnd = abs(mean(modifZdat(nFrex*2+1:nFrex*3,:),2)).^2;
+% lowrnd = abs(mean(modifZdat(nFrex*3+1:nFrex*4,:),2)).^2;
 
-% standardize within subjects and over bins and conditions
-if standOption == 3
-    datNotSPow = abs(datNotStandard).^2; % redundant, just for clarity
-    datStand = wcond(datNotSPow, 1);
-    lowDat = datStand(nFrex+1:nFrex*2,:);
-end
-% standardize within subjects and conditions over bins
+% randoDat = (lowrnd+highrnd)/2;
+% randoDat = squeeze(cat(3,allSnrE{:,comp1+1})); randoDat = randoDat(1:maxF,:);
 
+% subtraction_hl = (mean( highDat, 2) - mean(lowDat, 2))./(mean( highDat, 2) + mean(lowDat, 2));
 subtraction_hl = mean( highDat, 2) - mean(lowDat, 2);
+
+% median
+% % highDat = median(modifZdat(1:nFrex,:),2);
+% % highrnd = median(modifZdat(nFrex*2+1:nFrex*3,:),2);
+% % lowrnd = median(modifZdat(nFrex*3+1:nFrex*4,:),2);
+% % 
+% % 
+% % randoDat = (lowrnd+highrnd)/2;
+% % % randoDat = squeeze(cat(3,allSnrE{:,comp1+1})); randoDat = randoDat(1:maxF,:);
+% % 
+% % subtraction_hrnd = median( highDat, 2) - median(randoDat, 2);
+
+
 
 bar(subtraction_hl, 'FaceColor', colPins);
 imf = [11, 19, 22, 27, 38, 41];
@@ -1607,7 +1669,7 @@ imf = imf(find(imf < maxF));
 
 % imfTxt = [{'F2 - F1'},{'F1 + F2'},{'(2*F2) - (2*F1)'},{'3*F1 + F2'},{'(F1 + F2)*2'}, {'3*F2 - F1'}];
 % maxY = max(subtraction_hl)+1;
-% text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf)))
+% text((imf)-1, zeros(1,length(imf(1:length(imf))))+maxY, imfTxt(1:length(imf))) % *mean(EEG.data(31,:))
 
 %% plot the colors
 % color low - high
@@ -1618,6 +1680,7 @@ bar(FOIsLow, 'FaceColor', colLow)
 % color high
 FOIsHigh = zeros(size(subtraction_hl)); FOIsHigh(foiHigh) = subtraction_hl(foiHigh);
 bar(FOIsHigh, 'FaceColor', colHigh)
+% title([strrep(event{comp1+2}, '_',' '), ' - ',strrep(event{comp1+3}, '_',' ')])
 
 % color imf 
 FOIsImf = zeros(size(subtraction_hl)); FOIsImf(imf) = subtraction_hl(imf);
@@ -1625,24 +1688,50 @@ bar(FOIsImf, 'FaceColor', imfCol)
 
 if leg; legend({'Other';'Low';'High';'Imf'}); end
 
-% bar(FOIsHigh(2:43), 'g')
-title([strrep(event{comp1}, '_',' '), ' - ',strrep(event{comp1+1}, '_',' '), ' ',implistSNR(dati).name(end-18:end-4)])
+% bar(FOIsHigh(2:60), 'g')
+% title([strrep(event{comp1}, '_',' '), ' - ',strrep(event{comp1+1}, '_',' ')])
 % title('High-Low')
+
+% 
+% err
+% mDat = mean( highDat, 2) - mean(randoDat, 2); 
+% 
+% % highDat = mean(modifZdat(1:nFrex,:),2);
+% % highrnd = mean(modifZdat(nFrex*2+1:nFrex*3,:),2);
+% % lowrnd = mean(modifZdat(nFrex*3+1:nFrex*4,:),2);
+% % 
+% % randoDat = (lowrnd+highrnd)/2;
+% 
+% scaledStd = (std(bsxfun(@minus, modifZdat(1:nFrex,:), randoDat),0,2)./ sqrt(22) )  * 1.96;
+% 
+% % scaledStd = ( std( highDat - randoDat  ,0,2) ./ sqrt(22) )  * 1.96;
+% errHigh = mDat + scaledStd;
+% errLow = mDat - scaledStd;
+% %
+% k = 0.2; ls = 1.5;
+% for pli = 1:length(mDat)
+%     plot([pli-k pli+k] ,[errHigh(pli) errHigh(pli)], '-', 'LineWidth',ls,'Color', 'k') % upper vertical
+%     plot([pli pli] ,[errHigh(pli) errLow(pli)], '-','LineWidth',ls, 'Color', 'k') % horizontal
+%     plot([pli-k pli+k] ,[errLow(pli) errLow(pli)], '-','LineWidth',ls, 'Color', 'k') % lower vertical
+% end
+% set(gca,'ylim',[floor(min(errLow))-5 ceil(max(errHigh))+5], 'FontSize',12)
+
+% set(gca,'ylim',[-5 30])
 
 %% 
 subtr = highDat - lowDat;
 % subtr2 = (highDat - lowDat)./(highDat + lowDat);
 
+
 N = 23;
 err = std(subtr')./sqrt(N);
+
 
 errorb(1:43,subtraction_hl,err,'top')
 
 
-
-%% Cosmetics, pval & small plot
-while 0
-
+% % 
+%%
 % set(gca,'ylim',[-5 30], 'FontSize',12)
 %%%set(gca,'xlim',[1 40], 'FontSize',12)
 ylabel('Amplitude (mV)'); xlabel('Frequency')  % Modified z-scores
@@ -1650,7 +1739,7 @@ set(findall(gcf,'-property','FontSize'),'FontSize',14)
 set(findall(gcf,'-property','fontname'),'fontname', 'Arial')
 
 
-%% add p values and * manually
+%% sig
 % 
 labdat = subtraction_hl+err';
 sigf = [30];
@@ -1699,50 +1788,28 @@ set(gcf,'position',[x0,y0,width,height])
 % stim
 % set(gca,'ylim',[-2.5 5])
 set(gca,'ylim',[-0.75 2])
-end
 %% AVG RND
-figure(2)
-% LOW
-% standardize within conditions over all bins and subjects
-if standOption == 1
-    lowrnd = abs(datNotStandard(nFrex*3+1:nFrex*4,:)).^2;
-    lowrnd = wcond(lowrnd, 2); 
-end
-% standardize within bins and subjetcs over conditions
-if standOption == 2
-    numer = bsxfun(@minus, lowrnd, min(datMean')');
-    lowrnd = bsxfun(@rdivide, numer, max(datMean')' - min(datMean')');
-end
-% standardize within subjects and over bins and conditions
-if standOption == 3
-    datNotSPow = abs(datNotStandard).^2; % redundant, just for clarity
-    datStand = wcond(datNotSPow, 1);
-    lowrnd = datStand(nFrex*3+1:nFrex*4,:);
-end
-%HIGH
-% standardize within conditions over all bins and subjects
-if standOption == 1
-    highrnd = abs(datNotStandard(nFrex*2+1:nFrex*3,:)).^2;
-    highrnd = wcond(highrnd, 2);
-end
-% standardize within bins and subjetcs over conditions
-if standOption == 2
-    numer = bsxfun(@minus, highrnd, min(datMean')');
-    highrnd = bsxfun(@rdivide, numer, max(datMean')' - min(datMean')');
-end
-% standardize within subjects and over bins and conditions
-if standOption == 3
-    datNotSPow = abs(datNotStandard).^2; % redundant, just for clarity
-    datStand = wcond(datNotSPow, 1);
-    highrnd = datStand(nFrex*2+1:nFrex*3,:);
-end
-% lowrnd = abs(datNotStandard(nFrex*3+1:nFrex*4,:)).^2;
-% highrnd = abs(datNotStandard(nFrex*2+1:nFrex*3,:)).^2;
+% lowDat = squeeze(cat(3,allSnrE{:,2})); lowDat = lowDat(1:maxF,:);
+% lowDat = abs(mean(modifZdat(nFrex+1:nFrex*2,:),2)).^2;
 
-rnd = (lowrnd + highrnd)/2;
-rnd = lowrnd - highrnd;
+% lowrnd = abs(mean(modifZdat(nFrex*3+1:nFrex*4,:),2)).^2;
+% highrnd = abs(mean(modifZdat(nFrex*2+1:nFrex*3,:),2)).^2;
 
-rnds = mean(rnd,2);
+lowrnd = modifZdat(nFrex*3+1:nFrex*4,:);
+highrnd = modifZdat(nFrex*2+1:nFrex*3,:);
+
+rnd = abs((lowrnd + highrnd)/2).^2;
+rnd = rnd/1000; % convert to mV
+
+% lowrnd = abs(modifZdat(nFrex*3+1:nFrex*4,:)).^2;
+% highrnd = abs(modifZdat(nFrex*2+1:nFrex*3,:)).^2;
+
+rnds = mean(rnd,2);%  mean( lowDat, 2)- mean( randoDat, 2); % these names are wrong
+
+%median
+% % lowDat = median(modifZdat(nFrex+1:nFrex*2,:),2);
+% % 
+% % subtraction_lrnd = median( lowDat, 2)- median( randoDat, 2);
 
 % subplot(2,1,2); 
 hold on
@@ -1773,10 +1840,31 @@ bar(FOIsImf, 'FaceColor', imfCol)
 
 % legend({'Other';'Low';'High';'Imf'})
 
+% err
+% mDat = mean( lowDat, 2) - mean(randoDat, 2); 
+% 
+% scaledStd = (std(bsxfun(@minus, modifZdat(nFrex+1:nFrex*2,:), randoDat),0,2)./ sqrt(22) )  * 1.96;
+% 
+% % scaledStd = ( std( lowDat - randoDat  ,0,2) ./ sqrt(22) )  * 1.96;
+% errHigh = mDat + scaledStd;
+% errLow = mDat - scaledStd;
+% 
+% k = 0.2; ls = 1.5;
+% for pli = 1:length(mDat)
+%     plot([pli-k pli+k] ,[errHigh(pli) errHigh(pli)], '-', 'LineWidth',ls,'Color', 'k') % upper vertical
+%     plot([pli pli] ,[errHigh(pli) errLow(pli)], '-','LineWidth',ls, 'Color', 'k') % horizontal
+%     plot([pli-k pli+k] ,[errLow(pli) errLow(pli)], '-','LineWidth',ls, 'Color', 'k') % lower vertical
+% end
+% set(gca,'ylim',[floor(min(errLow))-5 ceil(max(errHigh))+5], 'FontSize',12)
+% 
+% 
+% %%%set(gca,'xlim',[1 40], 'FontSize',12)
+% % set(gca,'ylim',[-30 15], 'FontSize',12)
+% 
 ylabel('Amplitude (mV)', 'FontSize',14); xlabel('Frequency')  
 % title('Attending low')
 % title([strrep(event{comp1+2}, '_',' '), ' - ',strrep(event{comp1+3}, '_',' ')])
-% set(gca,'ylim',[min(rnds)-(min(rnds)*0.1) max(rnds)+(max(rnds)*0.5)])
+set(gca,'ylim',[min(rnds)-(min(rnds)*0.1) max(rnds)+(max(rnds)*0.5)])
 
 set(findall(gcf,'-property','FontSize'),'FontSize',14)
 set(findall(gcf,'-property','fontname'),'fontname', 'Arial')
@@ -1786,21 +1874,25 @@ legend({'Other';'Low';'High';'Imf'})
 
 %% err
 
+
+
 N = 23;
 % err = 1.96 * (std(rnd')./sqrt(N));
 err = std(rnd')./sqrt(N);
 
 errorb(1:43,mean(rnd,2),err, 'top')
-% title('NB! This is mean not subtraction!')
 
-% add sig manually
+
+%%
+% 
+% juku = mean(rnd,2)+err';
 % sigf = [8, 11, 19, 30]
 % text(sigf-0.15, juku(sigf)+1000, '*', 'fontsize',18)    
 
 hold off
 
 %% small plot
-while 0
+
 
 fs = 29:31;
 % fs = 7:9;
@@ -1833,100 +1925,77 @@ set(gcf,'position',[x0,y0,width,height])
 % cue
 % set(gca,'ylim',[0 40])
 % set(gca,'ylim',[0 7])
-end
+
 %%
 
 
 % pause()
-
+end
 %%
 
 %prelim stat
 
-
-frex = [8,30,11,19,22];
-counter = 0; statData = []; % frex, random/high-low, p, z, t, standOption, 
-% for loop to go through all the frex
-for f = 1:length(frex)
-% ADD: for loop to go over random and high low
-for control = 0:1
-  
-    if control == 1
-        juku = bsxfun(@minus, highrnd, lowrnd);
-    else
-        juku = bsxfun(@minus, highDat, lowDat);
-    end
-    % juku = bsxfun(@minus, abs(datNotStandard(1:nFrex,:)).^2, abs(datNotStandard(nFrex+1:nFrex*2,:)).^2);
+% juku = rnd;
+% juku = bsxfun(@minus, abs(modifZdat(1:nFrex,:)).^2, abs(modifZdat(nFrex+1:nFrex*2,:)).^2);
+juku = bsxfun(@minus, highDat, lowDat);
+% juku = subtr2;
 
 
-
-    % hist(datNotStandard(8, :))
-    % 
-    % raw
-    % highrndraw = mean(datStandard(nFrex*2+1:nFrex*3,:),2);
-    % lowrndraw = mean(datStandard(nFrex*3+1:nFrex*4,:),2);
-    % randoDatRaw = (lowrndraw+highrndraw)/2;
-    % juku = bsxfun(@minus, datStandard(nFrex+1:nFrex*2,:), randoDatRaw);
+% hist(modifZdat(8, :))
+% 
+% raw
+% highrndraw = mean(datStandard(nFrex*2+1:nFrex*3,:),2);
+% lowrndraw = mean(datStandard(nFrex*3+1:nFrex*4,:),2);
+% randoDatRaw = (lowrndraw+highrndraw)/2;
+% juku = bsxfun(@minus, datStandard(nFrex+1:nFrex*2,:), randoDatRaw);
 
 
 
-    % highDat(30)*sqrt(23)/std(juku(30, :))
+% highDat(30)*sqrt(23)/std(juku(30, :))
 
-    frex2comp = frex(f);
-    % data1 = (juku(frex2comp-1,:)+juku(frex2comp+1,:))/2;
-    data1 = zeros(23,1);% juku(7,:);
-    data2 = juku(frex2comp,:);
-    % hist(data2)
-    % [H, pValue, SWstatistic] = swtest(data2);
-    % pValue
+frex2comp = 22;
+% data1 = (juku(frex2comp-1,:)+juku(frex2comp+1,:))/2;
+data1 = zeros(23,1);% juku(7,:);
+data2 = juku(frex2comp,:);
+% hist(data2)
+% [H, pValue, SWstatistic] = swtest(data2);
+% pValue
 
-    figure(3), clf, hold on
+figure(2), clf, hold on
 
-    colors = 'kr';
-    N=max(size(data1));
-    for i=1:N
-        plot([data1(i) data2(i)],[i i],colors((data1(i)<data2(i))+1),'HandleVisibility','off')
-    end
-
-
-
-    plot(data1,1:N,'ks','markerfacecolor','k','markersize',10)
-    plot(data2,1:N,'ro','markerfacecolor','r','markersize',10)
-
-    % set(gca,'ylim',[0 N+1],'xlim',[-.5 max([data2])+.5],'xtick',0:5)
-    ylabel('Data index'), xlabel('Data value')
-    % grid minor
-    legend({'data1';'data2'})
-
-    counter = counter + 1;
-    [H, pValue, SWstatistic]  = swtest(data2);
-    
-    if pValue < 0.05
-        [p,h,stats] = signrank(data2);
-        title([ 'Wilcoxon z=' num2str(stats.zval) ', p=' num2str(p) ])
-        statData(counter,4) = stats.zval;
-    else
-        [h,p,c,stats] = ttest(data2);
-        title([ 't=' num2str(stats.tstat) ', p=' num2str(p) ])
-        statData(counter,5) = stats.tstat;
-    end
-    % end
-
-    statData(counter, 1) = frex(f); 
-    statData(counter, 3) = p;
-    statData(counter, 2) = control;
-    statData(counter, 6) = standOption;
-    statData(counter, 7) = dataIdx(dati);
-    
-%     r = stats.zval/sqrt(N);
-%     fprintf('The effect size r is: %f \n', r)
-%     pause()
+colors = 'kr';
+N=max(size(data1));
+for i=1:N
+    plot([data1(i) data2(i)],[i i],colors((data1(i)<data2(i))+1),'HandleVisibility','off')
 end
+
+
+
+plot(data1,1:N,'ks','markerfacecolor','k','markersize',10)
+plot(data2,1:N,'ro','markerfacecolor','r','markersize',10)
+
+% set(gca,'ylim',[0 N+1],'xlim',[-.5 max([data2])+.5],'xtick',0:5)
+ylabel('Data index'), xlabel('Data value')
+% grid minor
+legend({'data1';'data2'})
+
+
+[H, pValue, SWstatistic]  = swtest(data2);
+
+if pValue < 0.05
+    [p,h,stats] = signrank(data2);
+    title([ 'Wilcoxon z=' num2str(stats.zval) ', p=' num2str(p) ])
+else
+    [h,p,c,stats] = ttest(data2);
+    title([ 't=' num2str(stats.tstat) ', p=' num2str(p) ])
 end
-grandData = [grandData; statData];
-end
-end
-end
+% end
+
+p
+stats
+
+r = stats.zval/sqrt(N);
+fprintf('The effect size r is: %f \n', r)
 %% PALAMEDES
 dataDir = 'C:\Users\Richard Naar\Documents\dok\ssvep\Visit to York\EEG data\';  % directory for datafiles
 addpath('C:\Users\Richard Naar\Documents\MATLAB\palamedes1_10_3\Palamedes')
